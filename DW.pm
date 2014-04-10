@@ -62,6 +62,14 @@ sub update_game_state {
     $new_player->{x_speed} = $old_player->{x_speed} + $x_speed_delta;
     $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
 
+    my $max_speed    = 8;
+    my $player_speed = ( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 )**0.5;
+    if ( $player_speed > $max_speed ) {
+        my $mult = $max_speed / $player_speed;
+        $new_player->{x_speed} *= $mult;
+        $new_player->{y_speed} *= $mult;
+    }
+
     $new_player->{x} = $old_player->{x} + $new_player->{x_speed};
     $new_player->{y} = $old_player->{y} + $new_player->{y_speed};
 
@@ -84,7 +92,12 @@ sub render_world {
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
-    $self->draw_gfx_text( [ 0, $self->h - 32 ], 0xff_ff_ff_ff, join ' ', map $game_state->{player}{$_}, qw( x y rot ) );
+    $self->draw_gfx_text(
+        [ 0, $self->h - 32 ],
+        0xff_ff_ff_ff, join ' ',
+        ( map $game_state->{player}{$_}, qw( x y rot ) ),
+        ( $game_state->{player}->{x_speed}**2 + $game_state->{player}->{y_speed}**2 )**0.5
+    );
     $self->draw_gfx_text( [ 0, $self->h - 24 ], 0xff_ff_ff_ff, $self->fps );
     $self->draw_gfx_text( [ 0, $self->h - 16 ], 0xff_ff_ff_ff, $self->frame );
     $self->draw_gfx_text( [ 0, $self->h - 8 ],  0xff_ff_ff_ff, $game_state->{tick} );
