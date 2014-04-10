@@ -16,7 +16,7 @@ sub _build_client_state { { thrust => 0, turn_left => 0, turn_right => 0 } }
 
 sub _build_game_state {
     my ( $self ) = @_;
-    return { tick => 0, player => { x => $self->w / 2, y => $self->h / 2, rot => 0 } };
+    return { tick => 0, player => { x => $self->w / 2, y => $self->h / 2, x_speed => 0, y_speed => 0, rot => 0 } };
 }
 
 sub on_quit { shift->stop }
@@ -46,21 +46,27 @@ sub update_game_state {
     my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
 
+    my $old_player = $old_game_state->{player};
+    my $new_player = $new_game_state->{player};
+
+    my $x_speed_delta = 0;
+    my $y_speed_delta = 0;
+
     if ( $client_state->{thrust} ) {
-        my $old_player   = $old_game_state->{player};
-        my $new_player   = $new_game_state->{player};
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = 2;
-        my $x_delta      = $thrust_power * sin $rad_rot;
-        $new_player->{x} = $old_player->{x} + $x_delta;
-        my $y_delta = $thrust_power * cos $rad_rot;
-        $new_player->{y} = $old_player->{y} + $y_delta;
+        $x_speed_delta += $thrust_power * sin $rad_rot;
+        $y_speed_delta += $thrust_power * cos $rad_rot;
     }
 
+    $new_player->{x_speed} = $old_player->{x_speed} + $x_speed_delta;
+    $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
+
+    $new_player->{x} = $old_player->{x} + $new_player->{x_speed};
+    $new_player->{y} = $old_player->{y} + $new_player->{y_speed};
+
     if ( $client_state->{turn_left} or $client_state->{turn_right} ) {
-        my $sign       = $client_state->{turn_left} ? -1 : 1;
-        my $old_player = $old_game_state->{player};
-        my $new_player = $new_game_state->{player};
+        my $sign = $client_state->{turn_left} ? -1 : 1;
         my $turn_speed = 2;
         $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
         $new_player->{rot} += 360 if $new_player->{rot} < 0;
