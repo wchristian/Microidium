@@ -53,11 +53,13 @@ sub update_game_state {
     my $y_speed_delta = 0;
 
     my $gravity = 0.15;
+    $gravity *= -1 if $old_player->{y} < 0;
     $y_speed_delta -= $gravity;
 
     if ( $client_state->{thrust} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = 2;
+        $thrust_power = 0.05 if $old_player->{y} < 0 or $old_player->{y} > $self->h;
         $x_speed_delta += $thrust_power * sin $rad_rot;
         $y_speed_delta += $thrust_power * cos $rad_rot;
     }
