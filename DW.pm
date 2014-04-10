@@ -52,6 +52,9 @@ sub update_game_state {
     my $x_speed_delta = 0;
     my $y_speed_delta = 0;
 
+    my $gravity = 0.15;
+    $y_speed_delta -= $gravity;
+
     if ( $client_state->{thrust} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = 2;
