@@ -23,7 +23,7 @@ sub _build_game_state {
             y            => $self->h / 2,
             x_speed      => 0,
             y_speed      => 0,
-            turn_speed   => 2,
+            turn_speed   => 5,
             rot          => 0,
             thrust_power => 1,
         }
