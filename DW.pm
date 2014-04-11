@@ -91,7 +91,10 @@ sub update_game_state {
 
 sub render_world {
     my ( $self, $world, $game_state ) = @_;
-    $world->draw_gfx_text( [ map $game_state->{player}{$_}, qw( x y ) ], 0xff_ff_ff_ff, "x" );
+    my $player  = $game_state->{player};
+    my $rad_rot = deg2rad $player->{rot};
+    $world->draw_gfx_text( [ $player->{x} + 8 * sin $rad_rot, $player->{y} + 8 * cos $rad_rot ], 0x88_88_88_88, "x" );
+    $world->draw_gfx_text( [ map $player->{$_}, qw( x y ) ], 0xff_ff_ff_ff, "x" );
     return;
 }
 
