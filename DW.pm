@@ -45,6 +45,13 @@ sub on_keyup {
 sub update_game_state {
     my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
+    $self->apply_translation_forces( $old_game_state, $new_game_state, $client_state );
+    $self->apply_rotation_forces( $old_game_state, $new_game_state, $client_state );
+    return;
+}
+
+sub apply_translation_forces {
+    my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
 
     my $old_player = $old_game_state->{player};
     my $new_player = $new_game_state->{player};
@@ -78,14 +85,19 @@ sub update_game_state {
     $new_player->{x} = $old_player->{x} + $new_player->{x_speed};
     $new_player->{y} = $old_player->{y} + $new_player->{y_speed};
 
-    if ( $client_state->{turn_left} or $client_state->{turn_right} ) {
-        my $sign = $client_state->{turn_left} ? -1 : 1;
-        my $turn_speed = 2;
-        $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
-        $new_player->{rot} += 360 if $new_player->{rot} < 0;
-        $new_player->{rot} -= 360 if $new_player->{rot} > 360;
-    }
+    return;
+}
 
+sub apply_rotation_forces {
+    my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
+    return if !$client_state->{turn_left} and !$client_state->{turn_right};
+
+    my $sign       = $client_state->{turn_left} ? -1 : 1;
+    my $turn_speed = 2;
+    my $new_player = $new_game_state->{player};
+    $new_player->{rot} = $old_game_state->{player}{rot} + $sign * $turn_speed;
+    $new_player->{rot} += 360 if $new_player->{rot} < 0;
+    $new_player->{rot} -= 360 if $new_player->{rot} > 360;
     return;
 }
 
