@@ -16,7 +16,18 @@ sub _build_client_state { { thrust => 0, turn_left => 0, turn_right => 0 } }
 
 sub _build_game_state {
     my ( $self ) = @_;
-    return { tick => 0, player => { x => $self->w / 2, y => $self->h / 2, x_speed => 0, y_speed => 0, rot => 0 } };
+    return {
+        tick   => 0,
+        player => {
+            x            => $self->w / 2,
+            y            => $self->h / 2,
+            x_speed      => 0,
+            y_speed      => 0,
+            turn_speed   => 2,
+            rot          => 0,
+            thrust_power => 1,
+        }
+    };
 }
 
 sub on_quit { shift->stop }
@@ -65,7 +76,7 @@ sub apply_translation_forces {
 
     if ( $client_state->{thrust} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
-        my $thrust_power = 1;
+        my $thrust_power = $old_player->{thrust_power};
         $thrust_power = 0.05 if $old_player->{y} < 0 or $old_player->{y} > $self->h;
         $x_speed_delta += $thrust_power * sin $rad_rot;
         $y_speed_delta += $thrust_power * cos $rad_rot;
@@ -93,7 +104,7 @@ sub apply_rotation_forces {
     return if !$client_state->{turn_left} and !$client_state->{turn_right};
 
     my $sign       = $client_state->{turn_left} ? -1 : 1;
-    my $turn_speed = 2;
+    my $turn_speed = $old_game_state->{player}{turn_speed};
     my $new_player = $new_game_state->{player};
     $new_player->{rot} = $old_game_state->{player}{rot} + $sign * $turn_speed;
     $new_player->{rot} += 360 if $new_player->{rot} < 0;
