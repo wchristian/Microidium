@@ -20,16 +20,16 @@ sub _build_game_state {
     return {
         tick   => 0,
         player => {
-            x            => $self->w / 2,
-            y            => $self->h / 2,
+            x            => 0,
+            y            => 0,
             x_speed      => 0,
             y_speed      => 0,
             turn_speed   => 5,
             rot          => 0,
             thrust_power => 1,
         },
-        ceiling => 0.8 * $self->h,
-        floor   => 0.2 * $self->h,
+        ceiling => 600,
+        floor   => 0,
     };
 }
 
@@ -119,20 +119,27 @@ sub apply_rotation_forces {
 
 sub render_world {
     my ( $self, $world, $game_state ) = @_;
-    my $player  = $game_state->{player};
+    my $player = $game_state->{player};
 
-    $world->draw_rect( [ 0, $game_state->{ceiling}, $world->w, $world->h - $game_state->{ceiling} ], 0xff_30_30_ff );
-    $world->draw_line( [ 0, $game_state->{ceiling} ], [ $world->w, $game_state->{ceiling} ], 0xff_ff_ff_ff, 0 );
+    if ( ( my $ceil_height = $world->h / 2 - $player->{y} + $game_state->{ceiling} ) <= $world->h ) {
+        $world->draw_rect( [ 0, $ceil_height, $world->w, $world->h - $ceil_height ], 0xff_30_30_ff );
+        $world->draw_line( [ 0, $ceil_height ], [ $world->w, $ceil_height ], 0xff_ff_ff_ff, 0 );
+    }
 
-    $world->draw_rect( [ 0, 0, $world->w, $game_state->{floor} ], 0xff_30_30_ff );
-    $world->draw_line( [ 0, $game_state->{floor} ], [ $world->w, $game_state->{floor} ], 0xff_ff_ff_ff, 0 );
+    if ( ( my $floor_height = $world->h / 2 - $player->{y} + $game_state->{floor} ) >= 0 ) {
+        $world->draw_rect( [ 0, 0, $world->w, $floor_height ], 0xff_30_30_ff );
+        $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
+    }
 
-    $world->draw_line( [ $world->w * $_, 0, ], [ $world->w * $_, $world->h ], 0xff_ff_ff_44, 0 )
-      for qw( 0.25 0.5 0.75 1 );
+    $world->draw_line(
+        [ ( $world->w * $_ - $player->{x} ) % $world->w, 0, ],
+        [ ( $world->w * $_ - $player->{x} ) % $world->w, $world->h ],
+        0xff_ff_ff_44, 0
+    ) for qw( 0.25 0.5 0.75 1 );
 
     my $sprite = SDLx::Sprite->new( image => "player.png" );
-    $sprite->x( $player->{x} - $sprite->{orig_surface}->w / 4 );
-    $sprite->y( $player->{y} - $sprite->{orig_surface}->h / 4 );
+    $sprite->x( $world->w / 2 - $sprite->{orig_surface}->w / 4 );
+    $sprite->y( $world->h / 2 - $sprite->{orig_surface}->h / 4 );
     $sprite->rotation( $player->{rot} + 180 );
     $sprite->alpha( 0.5 );
     $sprite->clip(
