@@ -3,6 +3,7 @@ package DW;
 use 5.010;
 use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT SPACE );
 use Math::Trig 'deg2rad';
+use SDLx::Sprite;
 
 use Moo;
 
@@ -115,9 +116,22 @@ sub apply_rotation_forces {
 sub render_world {
     my ( $self, $world, $game_state ) = @_;
     my $player  = $game_state->{player};
-    my $rad_rot = deg2rad $player->{rot};
-    $world->draw_gfx_text( [ $player->{x} + 8 * sin $rad_rot, $player->{y} + 8 * cos $rad_rot ], 0x88_88_88_88, "x" );
-    $world->draw_gfx_text( [ map $player->{$_}, qw( x y ) ], 0xff_ff_ff_ff, "x" );
+
+    my $sprite = SDLx::Sprite->new( image => "player.png" );
+    $sprite->x( $player->{x} - $sprite->{orig_surface}->w / 4 );
+    $sprite->y( $player->{y} - $sprite->{orig_surface}->h / 4 );
+    $sprite->rotation( $player->{rot} + 180 );
+    $sprite->alpha( 0.5 );
+    $sprite->clip(
+        [
+            $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
+            $sprite->{orig_surface}->h / 4 + ( $sprite->surface->h - $sprite->{orig_surface}->h ) / 2,
+            $sprite->{orig_surface}->w / 2,
+            $sprite->{orig_surface}->h / 2,
+        ]
+    );
+    $sprite->draw( $world );
+
     return;
 }
 
