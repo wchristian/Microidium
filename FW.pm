@@ -82,7 +82,7 @@ sub render {
     my $world      = $self->world_display->{surface};
     my $game_state = $self->game_state;
 
-    $self->clear_surface( $world );
+    $self->clear_surface( $world, 0x330000ff );
     $self->render_world( $world, $game_state );
     $self->blit_by( SDL::GFX::Rotozoom::surface_xy( $world, 180, -1, 1, SMOOTHING_OFF ) );
     $self->render_ui( $game_state );
@@ -91,8 +91,8 @@ sub render {
 }
 
 sub clear_surface {
-    my ( $self, $surface ) = @_;
-    $surface->draw_rect( undef, 0 );
+    my ( $self, $surface, $color ) = @_;
+    $surface->draw_rect( undef, $color );
     return;
 }
 
