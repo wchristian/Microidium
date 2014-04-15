@@ -121,6 +121,15 @@ sub render_world {
     my ( $self, $world, $game_state ) = @_;
     my $player  = $game_state->{player};
 
+    $world->draw_rect( [ 0, $game_state->{ceiling}, $world->w, $world->h - $game_state->{ceiling} ], 0xff_30_30_ff );
+    $world->draw_line( [ 0, $game_state->{ceiling} ], [ $world->w, $game_state->{ceiling} ], 0xff_ff_ff_ff, 0 );
+
+    $world->draw_rect( [ 0, 0, $world->w, $game_state->{floor} ], 0xff_30_30_ff );
+    $world->draw_line( [ 0, $game_state->{floor} ], [ $world->w, $game_state->{floor} ], 0xff_ff_ff_ff, 0 );
+
+    $world->draw_line( [ $world->w * $_, 0, ], [ $world->w * $_, $world->h ], 0xff_ff_ff_44, 0 )
+      for qw( 0.25 0.5 0.75 1 );
+
     my $sprite = SDLx::Sprite->new( image => "player.png" );
     $sprite->x( $player->{x} - $sprite->{orig_surface}->w / 4 );
     $sprite->y( $player->{y} - $sprite->{orig_surface}->h / 4 );
