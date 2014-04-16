@@ -2,8 +2,9 @@ package DW;
 
 use 5.010;
 use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT SPACE );
-use Math::Trig 'deg2rad';
+use Math::Trig qw' deg2rad rad2deg ';
 use SDLx::Sprite;
+use Math::Vec qw(NewVec);
 
 use Moo;
 
@@ -76,16 +77,45 @@ sub on_keyup {
 sub update_game_state {
     my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
-    $self->apply_translation_forces( $old_game_state, $new_game_state, $client_state );
-    $self->apply_rotation_forces( $old_game_state, $new_game_state, $client_state );
+
+    my @p = ( $old_game_state->{player}, $old_game_state, $new_game_state->{player}, $new_game_state, $client_state );
+    $self->apply_translation_forces( @p );
+    $self->apply_rotation_forces( @p );
+
+    my @old_computers = @{ $old_game_state->{computers} };
+    my @new_computers = @{ $new_game_state->{computers} };
+    for my $i ( 0 .. $#old_computers ) {
+        my $input = $self->simple_ai_step( $old_computers[$i], $old_game_state->{player} );
+        my @c = ( $old_computers[$i], $old_game_state, $new_computers[$i], $new_game_state, $input );
+        $self->apply_translation_forces( @c );
+        $self->apply_rotation_forces( @c );
+    }
+
     return;
 }
 
-sub apply_translation_forces {
-    my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
+sub simple_ai_step {
+    my ( $self, $computer, $player ) = @_;
 
-    my $old_player = $old_game_state->{player};
-    my $new_player = $new_game_state->{player};
+    my @vec_to_player = NewVec( $computer->{x}, $computer->{y} )->Minus( [ $player->{x}, $player->{y} ] );
+    my $dot_product   = NewVec( @vec_to_player )->Dot( [ 0, -1 ] );
+    my $perpDot       = $vec_to_player[0] * -1 - $vec_to_player[1] * 0;
+    my $angle_to_down = rad2deg atan2( $perpDot, $dot_product );
+    my $comp_rot      = $computer->{rot};
+    $comp_rot -= 360 if $comp_rot > 180;
+    my $angle_to_player = $comp_rot - $angle_to_down;
+    $angle_to_player -= 360 if $angle_to_player > 180;
+    $angle_to_player += 360 if $angle_to_player < -180;
+
+    my $turn_left  = $angle_to_player < 0;
+    my $turn_right = $angle_to_player > 0;
+    my $thrust     = abs( $angle_to_player ) < 60;
+
+    return { turn_left => $turn_left, turn_right => $turn_right, thrust => $thrust };
+}
+
+sub apply_translation_forces {
+    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $client_state ) = @_;
 
     my $x_speed_delta = 0;
     my $y_speed_delta = 0;
@@ -122,13 +152,12 @@ sub apply_translation_forces {
 }
 
 sub apply_rotation_forces {
-    my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
+    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $client_state ) = @_;
     return if !$client_state->{turn_left} and !$client_state->{turn_right};
 
-    my $sign       = $client_state->{turn_right} ? -1 : 1;
-    my $turn_speed = $old_game_state->{player}{turn_speed};
-    my $new_player = $new_game_state->{player};
-    $new_player->{rot} = $old_game_state->{player}{rot} + $sign * $turn_speed;
+    my $sign = $client_state->{turn_right} ? -1 : 1;
+    my $turn_speed = $old_player->{turn_speed};
+    $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
     $new_player->{rot} += 360 if $new_player->{rot} < 0;
     $new_player->{rot} -= 360 if $new_player->{rot} > 360;
     return;
