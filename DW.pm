@@ -137,6 +137,12 @@ sub render_world {
         0xff_ff_ff_44, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
+    $world->draw_line(
+        [ 0, ( $world->h * $_ - $player->{y} ) % $world->h ],
+        [ $world->w, ( $world->h * $_ - $player->{y} ) % $world->h ],
+        0xff_ff_ff_44, 0
+    ) for qw( 0.25 0.5 0.75 1 );
+
     my $sprite = SDLx::Sprite->new( image => "player.png" );
     $sprite->x( $world->w / 2 - $sprite->{orig_surface}->w / 4 );
     $sprite->y( $world->h / 2 - $sprite->{orig_surface}->h / 4 );
