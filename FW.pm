@@ -45,8 +45,11 @@ sub _build_event_handlers {
 
 sub _build_world_display {
     my ( $self ) = @_;
-    return { surface => $self->temp_surface( width => $self->w, height => $self->h ) };
+    my $zoom = $self->zoom;
+    return { surface => $self->temp_surface( width => $self->w / $zoom, height => $self->h / $zoom ) };
 }
+
+sub zoom { shift->client_state->{zoom} || 1 }
 
 sub on_event {
     my ( $self, $event ) = @_;
@@ -81,10 +84,11 @@ sub render {
 
     my $world      = $self->world_display->{surface};
     my $game_state = $self->game_state;
+    my $zoom       = $self->zoom;
 
     $self->clear_surface( $world, 0x330000ff );
     $self->render_world( $world, $game_state );
-    $self->blit_by( SDL::GFX::Rotozoom::surface_xy( $world, 180, -1, 1, SMOOTHING_OFF ) );
+    $self->blit_by( SDL::GFX::Rotozoom::surface_xy( $world, 180, -$zoom, $zoom, SMOOTHING_OFF ) );
     $self->render_ui( $game_state );
 
     return;
