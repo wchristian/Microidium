@@ -25,10 +25,10 @@ sub _build_game_state {
             x_speed      => 0,
             y_speed      => 0,
             turn_speed   => 5,
-            rot          => 0,
+            rot          => 180,
             thrust_power => 1,
         },
-        ceiling => 600,
+        ceiling => -600,
         floor   => 0,
     };
 }
@@ -74,15 +74,15 @@ sub apply_translation_forces {
     my $y_speed_delta = 0;
 
     my $gravity = 0.15;
-    $gravity *= -1 if $old_player->{y} < $old_game_state->{floor};
-    $y_speed_delta -= $gravity;
+    $gravity *= -1 if $old_player->{y} > $old_game_state->{floor};
+    $y_speed_delta += $gravity;
 
     if ( $client_state->{thrust} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = $old_player->{thrust_power};
         $thrust_power = 0.05
-          if $old_player->{y} < $old_game_state->{floor}
-          or $old_player->{y} > $old_game_state->{ceiling};
+          if $old_player->{y} > $old_game_state->{floor}
+          or $old_player->{y} < $old_game_state->{ceiling};
         $x_speed_delta += $thrust_power * sin $rad_rot;
         $y_speed_delta += $thrust_power * cos $rad_rot;
     }
@@ -108,7 +108,7 @@ sub apply_rotation_forces {
     my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
     return if !$client_state->{turn_left} and !$client_state->{turn_right};
 
-    my $sign       = $client_state->{turn_left} ? -1 : 1;
+    my $sign       = $client_state->{turn_right} ? -1 : 1;
     my $turn_speed = $old_game_state->{player}{turn_speed};
     my $new_player = $new_game_state->{player};
     $new_player->{rot} = $old_game_state->{player}{rot} + $sign * $turn_speed;
@@ -121,13 +121,13 @@ sub render_world {
     my ( $self, $world, $game_state ) = @_;
     my $player = $game_state->{player};
 
-    if ( ( my $ceil_height = $world->h / 2 - $player->{y} + $game_state->{ceiling} ) <= $world->h ) {
-        $world->draw_rect( [ 0, $ceil_height, $world->w, $world->h - $ceil_height ], 0xff_30_30_ff );
+    if ( ( my $ceil_height = $world->h / 2 - $player->{y} + $game_state->{ceiling} ) >= 0 ) {
+        $world->draw_rect( [ 0, 0, $world->w, $ceil_height ], 0xff_30_30_ff );
         $world->draw_line( [ 0, $ceil_height ], [ $world->w, $ceil_height ], 0xff_ff_ff_ff, 0 );
     }
 
-    if ( ( my $floor_height = $world->h / 2 - $player->{y} + $game_state->{floor} ) >= 0 ) {
-        $world->draw_rect( [ 0, 0, $world->w, $floor_height ], 0xff_30_30_ff );
+    if ( ( my $floor_height = $world->h / 2 - $player->{y} + $game_state->{floor} ) <= $world->h ) {
+        $world->draw_rect( [ 0, $floor_height, $world->w, $world->h - $floor_height ], 0xff_30_30_ff );
         $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
     }
 

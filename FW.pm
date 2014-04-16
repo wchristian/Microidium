@@ -88,7 +88,7 @@ sub render {
 
     $self->clear_surface( $world, 0x330000ff );
     $self->render_world( $world, $game_state );
-    $self->blit_by( SDL::GFX::Rotozoom::surface_xy( $world, 180, -$zoom, $zoom, SMOOTHING_OFF ) );
+    $self->blit_by( SDL::GFX::Rotozoom::zoom_surface( $world, $zoom, $zoom, SMOOTHING_OFF ) );
     $self->render_ui( $game_state );
 
     return;
