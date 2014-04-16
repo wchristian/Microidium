@@ -30,6 +30,20 @@ sub _build_game_state {
             max_speed    => 8,
             thrust_stall => 0.05,
         },
+        computers => [
+            map +{
+                x            => $_ * 50,
+                y            => 0,
+                x_speed      => 0,
+                y_speed      => 0,
+                turn_speed   => ( rand() * 5 ) + 1,
+                rot          => 180,
+                thrust_power => rand() + 0.2,
+                max_speed    => 8,
+                thrust_stall => 0.05,
+            },
+            -5 .. 5
+        ],
         ceiling => -600,
         floor   => 0,
         gravity => 0.15,
@@ -146,20 +160,23 @@ sub render_world {
         0xff_ff_ff_44, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
-    my $sprite = SDLx::Sprite->new( image => "player.png" );
-    $sprite->x( $world->w / 2 - $sprite->{orig_surface}->w / 4 );
-    $sprite->y( $world->h / 2 - $sprite->{orig_surface}->h / 4 );
-    $sprite->rotation( $player->{rot} + 180 );
-    $sprite->alpha( 0.5 );
-    $sprite->clip(
-        [
-            $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
-            $sprite->{orig_surface}->h / 4 + ( $sprite->surface->h - $sprite->{orig_surface}->h ) / 2,
-            $sprite->{orig_surface}->w / 2,
-            $sprite->{orig_surface}->h / 2,
-        ]
-    );
-    $sprite->draw( $world );
+    for my $flier ( $player, @{ $game_state->{computers} } ) {
+
+        my $sprite = SDLx::Sprite->new( image => "player.png" );
+        $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
+        $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
+        $sprite->rotation( $flier->{rot} + 180 );
+        $sprite->alpha( 0.5 );
+        $sprite->clip(
+            [
+                $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
+                $sprite->{orig_surface}->h / 4 + ( $sprite->surface->h - $sprite->{orig_surface}->h ) / 2,
+                $sprite->{orig_surface}->w / 2,
+                $sprite->{orig_surface}->h / 2,
+            ]
+        );
+        $sprite->draw( $world );
+    }
 
     return;
 }
