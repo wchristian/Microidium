@@ -27,9 +27,12 @@ sub _build_game_state {
             turn_speed   => 5,
             rot          => 180,
             thrust_power => 1,
+            max_speed    => 8,
+            thrust_stall => 0.05,
         },
         ceiling => -600,
         floor   => 0,
+        gravity => 0.15,
     };
 }
 
@@ -73,14 +76,14 @@ sub apply_translation_forces {
     my $x_speed_delta = 0;
     my $y_speed_delta = 0;
 
-    my $gravity = 0.15;
+    my $gravity = $old_game_state->{gravity};
     $gravity *= -1 if $old_player->{y} > $old_game_state->{floor};
     $y_speed_delta += $gravity;
 
     if ( $client_state->{thrust} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = $old_player->{thrust_power};
-        $thrust_power = 0.05
+        $thrust_power = $old_player->{thrust_stall}
           if $old_player->{y} > $old_game_state->{floor}
           or $old_player->{y} < $old_game_state->{ceiling};
         $x_speed_delta += $thrust_power * sin $rad_rot;
@@ -90,7 +93,7 @@ sub apply_translation_forces {
     $new_player->{x_speed} = $old_player->{x_speed} + $x_speed_delta;
     $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
 
-    my $max_speed    = 8;
+    my $max_speed    = $old_player->{max_speed};
     my $player_speed = ( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 )**0.5;
     if ( $player_speed > $max_speed ) {
         my $mult = $max_speed / $player_speed;
