@@ -14,7 +14,7 @@ __PACKAGE__->new->run if !caller;
 
 1;
 
-sub _build_client_state { { thrust => 0, turn_left => 0, turn_right => 0, zoom => 2 } }
+sub _build_client_state { { thrust => 0, turn_left => 0, turn_right => 0, zoom => 1 } }
 
 sub _build_game_state {
     my ( $self ) = @_;
