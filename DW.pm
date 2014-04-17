@@ -1,7 +1,7 @@
 package DW;
 
 use 5.010;
-use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT SPACE );
+use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d );
 use Math::Trig qw' deg2rad rad2deg ';
 use SDLx::Sprite;
 use Math::Vec qw(NewVec);
@@ -9,13 +9,14 @@ use Math::Vec qw(NewVec);
 use Moo;
 
 has player_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => "player.png" ) } );
+has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => "bullet.png" ) } );
 with 'FW';
 
 __PACKAGE__->new->run if !caller;
 
 1;
 
-sub _build_client_state { { thrust => 0, turn_left => 0, turn_right => 0, zoom => 1 } }
+sub _build_client_state { { fire => 0, thrust => 0, turn_left => 0, turn_right => 0, zoom => 1 } }
 
 sub _build_game_state {
     my ( $self ) = @_;
@@ -29,9 +30,12 @@ sub _build_game_state {
             turn_speed   => 5,
             rot          => 180,
             thrust_power => 1,
-            max_speed    => 8,
+            max_speed    => 10,
             thrust_stall => 0.05,
             grav_cancel  => 0.3,
+            gun_heat     => 0,
+            gun_cooldown => 1,
+            gun_use_heat => 10,
         },
         computers => [
             map +{
@@ -45,9 +49,13 @@ sub _build_game_state {
                 max_speed    => 8,
                 thrust_stall => 0.05,
                 grav_cancel  => 0.3,
+                gun_heat     => 0,
+                gun_cooldown => 1,
+                gun_use_heat => 60,
             },
             -5 .. 5
         ],
+        bullets => [],
         ceiling => -600,
         floor   => 0,
         gravity => 0.15,
@@ -63,7 +71,7 @@ sub on_keydown {
     $self->client_state->{thrust}     = 1 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 1 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 1 if $sym == SDLK_RIGHT;
-    $self->client_state->{fire}       = 1 if $sym == SDLK_SPACE;
+    $self->client_state->{fire}       = 1 if $sym == SDLK_d;
     return;
 }
 
@@ -73,7 +81,7 @@ sub on_keyup {
     $self->client_state->{thrust}     = 0 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 0 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 0 if $sym == SDLK_RIGHT;
-    $self->client_state->{fire}       = 0 if $sym == SDLK_SPACE;
+    $self->client_state->{fire}       = 0 if $sym == SDLK_d;
     return;
 }
 
@@ -81,9 +89,22 @@ sub update_game_state {
     my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
 
+    my @old_bullets = @{ $old_game_state->{bullets} };
+    my @new_bullets = @{ $new_game_state->{bullets} };
+    my @moved_bullets;
+    for my $i ( 0 .. $#old_bullets ) {
+        next if $old_bullets[$i]->{life_time} > $old_bullets[$i]->{max_life};
+        my @c = ( $old_bullets[$i], $old_game_state, $new_bullets[$i], $new_game_state, { thrust => 1 } );
+        $self->apply_translation_forces( @c );
+        $new_bullets[$i]{life_time}++;
+        push @moved_bullets, $new_bullets[$i];
+    }
+    $new_game_state->{bullets} = \@moved_bullets;
+
     my @p = ( $old_game_state->{player}, $old_game_state, $new_game_state->{player}, $new_game_state, $client_state );
     $self->apply_translation_forces( @p );
     $self->apply_rotation_forces( @p );
+    $self->apply_weapon_effects( @p );
 
     my @old_computers = @{ $old_game_state->{computers} };
     my @new_computers = @{ $new_game_state->{computers} };
@@ -92,8 +113,32 @@ sub update_game_state {
         my @c = ( $old_computers[$i], $old_game_state, $new_computers[$i], $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
+        $self->apply_weapon_effects( @c );
     }
 
+    return;
+}
+
+sub apply_weapon_effects {
+    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input ) = @_;
+    $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
+    if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
+        push @{ $new_game_state->{bullets} },
+          {
+            max_speed    => 13,
+            thrust_power => 9,
+            thrust_stall => 9,
+            x_speed      => $new_player->{x_speed},
+            y_speed      => $new_player->{y_speed},
+            x            => $new_player->{x},
+            y            => $new_player->{y},
+            rot          => $new_player->{rot},
+            life_time    => 0,
+            max_life     => 60,
+            grav_cancel  => 0,
+          };
+        $new_player->{gun_heat} += $old_player->{gun_use_heat};
+    }
     return;
 }
 
@@ -113,8 +158,9 @@ sub simple_ai_step {
     my $turn_left  = $angle_to_player < 0;
     my $turn_right = $angle_to_player > 0;
     my $thrust     = abs( $angle_to_player ) < 60;
+    my $fire       = abs( $angle_to_player ) < 15;
 
-    return { turn_left => $turn_left, turn_right => $turn_right, thrust => $thrust };
+    return { turn_left => $turn_left, turn_right => $turn_right, thrust => $thrust, fire => $fire };
 }
 
 sub apply_translation_forces {
@@ -209,12 +255,19 @@ sub render_world {
         $sprite->draw( $world );
     }
 
+    my $bullet_sprite = $self->bullet_sprite;
+    for my $bullet ( @{ $game_state->{bullets} } ) {
+        $bullet_sprite->x( $bullet->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
+        $bullet_sprite->y( $bullet->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
+        $bullet_sprite->draw( $world );
+    }
+
     return;
 }
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
-    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right - Quit: q" );
+    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
         0xff_ff_ff_ff, join ' ',
