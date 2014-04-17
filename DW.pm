@@ -124,6 +124,25 @@ sub update_game_state {
         $new_game_state->{player_was_hit} = $new_game_state->{tick};
     }
 
+    @{ $new_game_state->{computers} } = grep !$self->was_hit( $_, $new_game_state->{bullets} ), @new_computers;
+    push @{ $new_game_state->{computers} },
+      {
+        x            => 0,
+        y            => 0,
+        x_speed      => 0,
+        y_speed      => 0,
+        turn_speed   => ( rand() * 5 ) + 1,
+        rot          => 180,
+        thrust_power => rand() + 0.2,
+        max_speed    => 8,
+        thrust_stall => 0.05,
+        grav_cancel  => 0.3,
+        gun_heat     => 0,
+        gun_cooldown => 1,
+        gun_use_heat => 60,
+      }
+      if @{ $new_game_state->{computers} } < 10;
+
     return;
 }
 
