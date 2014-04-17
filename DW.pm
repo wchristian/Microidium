@@ -8,6 +8,7 @@ use Math::Vec qw(NewVec);
 
 use Moo;
 
+has player_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => "player.png" ) } );
 with 'FW';
 
 __PACKAGE__->new->run if !caller;
@@ -189,9 +190,9 @@ sub render_world {
         0xff_ff_ff_44, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
+    my $sprite = $self->player_sprite;
     for my $flier ( $player, @{ $game_state->{computers} } ) {
 
-        my $sprite = SDLx::Sprite->new( image => "player.png" );
         $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
         $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
         $sprite->rotation( $flier->{rot} + 180 );
