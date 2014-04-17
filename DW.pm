@@ -36,6 +36,7 @@ sub _build_game_state {
             gun_heat     => 0,
             gun_cooldown => 1,
             gun_use_heat => 10,
+            damage       => 0,
         },
         computers => [
             map +{
@@ -55,10 +56,11 @@ sub _build_game_state {
             },
             -5 .. 5
         ],
-        bullets => [],
-        ceiling => -600,
-        floor   => 0,
-        gravity => 0.15,
+        player_was_hit => 0,
+        bullets        => [],
+        ceiling        => -600,
+        floor          => 0,
+        gravity        => 0.15,
     };
 }
 
@@ -104,7 +106,7 @@ sub update_game_state {
     my @p = ( $old_game_state->{player}, $old_game_state, $new_game_state->{player}, $new_game_state, $client_state );
     $self->apply_translation_forces( @p );
     $self->apply_rotation_forces( @p );
-    $self->apply_weapon_effects( @p );
+    $self->apply_weapon_effects( @p, "is_player" );
 
     my @old_computers = @{ $old_game_state->{computers} };
     my @new_computers = @{ $new_game_state->{computers} };
@@ -116,11 +118,30 @@ sub update_game_state {
         $self->apply_weapon_effects( @c );
     }
 
+    $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
+    if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets}, "is_player" ) ) {
+        $new_game_state->{player}{damage}++;
+        $new_game_state->{player_was_hit} = $new_game_state->{tick};
+    }
+
+    return;
+}
+
+sub was_hit {
+    my ( $self, $player, $bullets, $is_player ) = @_;
+
+    my $player_vec = NewVec( $player->{x}, $player->{y} );
+    for my $bullet ( @{$bullets} ) {
+        next if ( $is_player and $bullet->{is_player} ) or ( ( !$is_player and !$bullet->{is_player} ) );
+        my $distance = NewVec( $player_vec->Minus( [ $bullet->{x}, $bullet->{y} ] ) )->Length;
+        return 1 if $distance <= 32;
+    }
+
     return;
 }
 
 sub apply_weapon_effects {
-    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input ) = @_;
+    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input, $is_player ) = @_;
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
         push @{ $new_game_state->{bullets} },
@@ -136,6 +157,7 @@ sub apply_weapon_effects {
             life_time    => 0,
             max_life     => 60,
             grav_cancel  => 0,
+            is_player    => $is_player,
           };
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
@@ -226,16 +248,17 @@ sub render_world {
         $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
     }
 
+    my $stall_color = $game_state->{player_was_hit} ? 0xff_ff_ff_88 : 0xff_ff_ff_44;
     $world->draw_line(
         [ ( $world->w * $_ - $player->{x} ) % $world->w, 0, ],
         [ ( $world->w * $_ - $player->{x} ) % $world->w, $world->h ],
-        0xff_ff_ff_44, 0
+        $stall_color, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
     $world->draw_line(
         [ 0, ( $world->h * $_ - $player->{y} ) % $world->h ],
         [ $world->w, ( $world->h * $_ - $player->{y} ) % $world->h ],
-        0xff_ff_ff_44, 0
+        $stall_color, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
     my $sprite = $self->player_sprite;
@@ -267,7 +290,8 @@ sub render_world {
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
-    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
+    $self->draw_gfx_text( [ 0, 0 ],             0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
+    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "Damage: " . $self->game_state->{player}{damage} );
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
         0xff_ff_ff_ff, join ' ',
