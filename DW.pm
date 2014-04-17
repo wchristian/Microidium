@@ -212,6 +212,7 @@ sub render_world {
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
+    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right - Quit: q" );
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
         0xff_ff_ff_ff, join ' ',
