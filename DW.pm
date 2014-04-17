@@ -195,7 +195,6 @@ sub render_world {
         $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
         $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
         $sprite->rotation( $flier->{rot} + 180 );
-        $sprite->alpha( 0.5 );
         $sprite->clip(
             [
                 $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
