@@ -31,6 +31,7 @@ sub _build_game_state {
             thrust_power => 1,
             max_speed    => 8,
             thrust_stall => 0.05,
+            grav_cancel  => 0.3,
         },
         computers => [
             map +{
@@ -43,6 +44,7 @@ sub _build_game_state {
                 thrust_power => rand() + 0.2,
                 max_speed    => 8,
                 thrust_stall => 0.05,
+                grav_cancel  => 0.3,
             },
             -5 .. 5
         ],
@@ -121,16 +123,16 @@ sub apply_translation_forces {
     my $x_speed_delta = 0;
     my $y_speed_delta = 0;
 
+    my $stalled = ( $old_player->{y} > $old_game_state->{floor} or $old_player->{y} < $old_game_state->{ceiling} );
     my $gravity = $old_game_state->{gravity};
+    $gravity *= $old_player->{grav_cancel} if $client_state->{thrust} and !$stalled;
     $gravity *= -1 if $old_player->{y} > $old_game_state->{floor};
     $y_speed_delta += $gravity;
 
     if ( $client_state->{thrust} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = $old_player->{thrust_power};
-        $thrust_power = $old_player->{thrust_stall}
-          if $old_player->{y} > $old_game_state->{floor}
-          or $old_player->{y} < $old_game_state->{ceiling};
+        $thrust_power = $old_player->{thrust_stall} if $stalled;
         $x_speed_delta += $thrust_power * sin $rad_rot;
         $y_speed_delta += $thrust_power * cos $rad_rot;
     }
