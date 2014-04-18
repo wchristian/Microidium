@@ -5,6 +5,7 @@ use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d );
 use Math::Trig qw' deg2rad rad2deg ';
 use SDLx::Sprite;
 use Math::Vec qw(NewVec);
+use List::Util 'min';
 
 use Moo;
 
@@ -21,12 +22,13 @@ sub _build_client_state { { fire => 0, thrust => 0, turn_left => 0, turn_right =
 sub _build_game_state {
     my ( $self ) = @_;
     return {
-        tick   => 0,
-        player => {
+        tick       => 0,
+        last_input => 0,
+        player     => {
             x            => 0,
             y            => 0,
             x_speed      => 0,
-            y_speed      => 0,
+            y_speed      => -32,
             turn_speed   => 5,
             rot          => 180,
             thrust_power => 1,
@@ -38,24 +40,7 @@ sub _build_game_state {
             gun_use_heat => 10,
             damage       => 0,
         },
-        computers => [
-            map +{
-                x            => $_ * 50,
-                y            => 0,
-                x_speed      => 0,
-                y_speed      => 0,
-                turn_speed   => ( rand() * 5 ) + 1,
-                rot          => 180,
-                thrust_power => rand() + 0.2,
-                max_speed    => 8,
-                thrust_stall => 0.05,
-                grav_cancel  => 0.3,
-                gun_heat     => 0,
-                gun_cooldown => 1,
-                gun_use_heat => 60,
-            },
-            -5 .. 5
-        ],
+        computers      => [],
         player_was_hit => 0,
         bullets        => [],
         ceiling        => -1800,
@@ -68,6 +53,7 @@ sub on_quit { shift->stop }
 
 sub on_keydown {
     my ( $self, $event ) = @_;
+    $self->game_state->{last_input} = time;
     my $sym = $event->key_sym;
     $self->stop if $sym == SDLK_q;
     $self->client_state->{thrust}     = 1 if $sym == SDLK_UP;
@@ -104,6 +90,9 @@ sub update_game_state {
     $new_game_state->{bullets} = \@moved_bullets;
 
     my @p = ( $old_game_state->{player}, $old_game_state, $new_game_state->{player}, $new_game_state, $client_state );
+    if ( time - $self->game_state->{last_input} > 10 ) {
+        $p[4] = $self->simple_ai_step( $old_game_state->{player}, $old_game_state->{computers}[0] );
+    }
     $self->apply_translation_forces( @p );
     $self->apply_rotation_forces( @p );
     $self->apply_weapon_effects( @p, "is_player" );
@@ -127,8 +116,8 @@ sub update_game_state {
     @{ $new_game_state->{computers} } = grep !$self->was_hit( $_, $new_game_state->{bullets} ), @new_computers;
     push @{ $new_game_state->{computers} },
       {
-        x            => 0,
-        y            => 0,
+        x => $old_game_state->{player}{x} + ( 1500 * rand ) - 750,
+        y => min( 0, $old_game_state->{player}{y} + ( 1500 * rand ) - 750 ),
         x_speed      => 0,
         y_speed      => 0,
         turn_speed   => ( rand() * 5 ) + 1,
@@ -185,6 +174,7 @@ sub apply_weapon_effects {
 
 sub simple_ai_step {
     my ( $self, $computer, $player ) = @_;
+    return if !$player;
 
     my @vec_to_player = NewVec( $computer->{x}, $computer->{y} )->Minus( [ $player->{x}, $player->{y} ] );
     my $dot_product   = NewVec( @vec_to_player )->Dot( [ 0, -1 ] );
