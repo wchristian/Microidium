@@ -85,6 +85,9 @@ sub update_game_state {
         my @c = ( $old_bullets[$i], $old_game_state, $new_bullets[$i], $new_game_state, { thrust => 1 } );
         $self->apply_translation_forces( @c );
         $new_bullets[$i]{life_time}++;
+        $new_bullets[$i]{life_time} += 12
+          if $new_bullets[$i]{y} > $old_game_state->{floor}
+          or $new_bullets[$i]{y} < $old_game_state->{ceiling};
         push @moved_bullets, $new_bullets[$i];
     }
     $new_game_state->{bullets} = \@moved_bullets;
