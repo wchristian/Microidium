@@ -58,7 +58,7 @@ sub _build_game_state {
         ],
         player_was_hit => 0,
         bullets        => [],
-        ceiling        => -600,
+        ceiling        => -1800,
         floor          => 0,
         gravity        => 0.15,
     };
