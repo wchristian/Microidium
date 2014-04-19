@@ -5,7 +5,8 @@ use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d );
 use Math::Trig qw' deg2rad rad2deg ';
 use SDLx::Sprite;
 use Math::Vec qw(NewVec);
-use List::Util 'min';
+use List::Util qw( first min );
+use Carp::Always;
 
 use Moo;
 
@@ -22,25 +23,10 @@ sub _build_client_state { { fire => 0, thrust => 0, turn_left => 0, turn_right =
 sub _build_game_state {
     my ( $self ) = @_;
     return {
-        tick       => 0,
-        last_input => 0,
-        player     => {
-            x            => 0,
-            y            => 0,
-            x_speed      => 0,
-            y_speed      => -32,
-            turn_speed   => 5,
-            rot          => 180,
-            thrust_power => 1,
-            max_speed    => 10,
-            thrust_stall => 0.05,
-            grav_cancel  => 0.3,
-            gun_heat     => 0,
-            gun_cooldown => 1,
-            gun_use_heat => 10,
-            damage       => 0,
-        },
-        computers      => [],
+        tick           => 0,
+        last_input     => 0,
+        player         => undef,
+        actors         => [],
         player_was_hit => 0,
         bullets        => [],
         ceiling        => -1800,
@@ -84,19 +70,19 @@ sub update_game_state {
         $self->apply_translation_forces( @c );
     }
 
-    my @p = ( $old_game_state->{player}, $old_game_state, $new_game_state->{player}, $new_game_state, $client_state );
-    if ( time - $self->game_state->{last_input} > 10 ) {
-        $p[4] = $self->simple_ai_step( $old_game_state->{player}, $old_game_state->{computers}[0] );
-    }
-    $self->apply_translation_forces( @p );
-    $self->apply_rotation_forces( @p );
-    $self->apply_weapon_effects( @p, "is_player" );
-
-    my @old_computers = @{ $old_game_state->{computers} };
-    my @new_computers = @{ $new_game_state->{computers} };
-    for my $i ( 0 .. $#old_computers ) {
-        my $input = $self->simple_ai_step( $old_computers[$i], $old_game_state->{player} );
-        my @c = ( $old_computers[$i], $old_game_state, $new_computers[$i], $new_game_state, $input );
+    my @old_actors = @{ $old_game_state->{actors} };
+    my @new_actors = @{ $new_game_state->{actors} };
+    for my $i ( 0 .. $#old_actors ) {
+        my $input =
+          ( $old_actors[$i]{input} eq 'player' )
+          ? (
+            ( time - $self->game_state->{last_input} > 10 )
+            ? $self->simple_ai_step( $old_game_state->{player},
+                first { $_ != $old_game_state->{player} } @{ $old_game_state->{actors} } )
+            : $client_state
+          )
+          : $self->simple_ai_step( $old_actors[$i], $old_game_state->{player} );
+        my @c = ( $old_actors[$i], $old_game_state, $new_actors[$i], $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
@@ -109,15 +95,18 @@ sub update_game_state {
           or $new_bullets[$i]{y} < $old_game_state->{ceiling};
     }
 
-    $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
-    if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets}, "is_player" ) ) {
-        $new_game_state->{player}{damage}++;
-        $new_game_state->{player_was_hit} = $new_game_state->{tick};
+    if ( $old_game_state->{player} ) {
+        $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
+        if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets}, "is_player" ) ) {
+            $new_game_state->{player}{damage}++;
+            $new_game_state->{player_was_hit} = $new_game_state->{tick};
+        }
     }
 
-    @{ $new_game_state->{computers} } = grep !$self->was_hit( $_, $new_game_state->{bullets} ), @new_computers;
+    @{ $new_game_state->{actors} } =
+      grep { $_->{is_player} or !$self->was_hit( $_, $new_game_state->{bullets} ) } @{ $new_game_state->{actors} };
     @{ $new_game_state->{bullets} } = grep { $_->{life_time} <= $_->{max_life} } @{ $new_game_state->{bullets} };
-    push @{ $new_game_state->{computers} },
+    push @{ $new_game_state->{actors} },
       {
         x => $old_game_state->{player}{x} + ( 1500 * rand ) - 750,
         y => min( 0, $old_game_state->{player}{y} + ( 1500 * rand ) - 750 ),
@@ -132,8 +121,32 @@ sub update_game_state {
         gun_heat     => 0,
         gun_cooldown => 1,
         gun_use_heat => 60,
+        input        => 'computer',
       }
-      if @{ $new_game_state->{computers} } < 10;
+      if $old_game_state->{player} and @{ $new_game_state->{actors} } < 10;
+
+    if ( !$old_game_state->{player} ) {
+        my %player = (
+            x            => 0,
+            y            => 0,
+            x_speed      => 0,
+            y_speed      => -32,
+            turn_speed   => 5,
+            rot          => 180,
+            thrust_power => 1,
+            max_speed    => 10,
+            thrust_stall => 0.05,
+            grav_cancel  => 0.3,
+            gun_heat     => 0,
+            gun_cooldown => 1,
+            gun_use_heat => 10,
+            damage       => 0,
+            input        => 'player',
+            is_player    => 1,
+        );
+        $new_game_state->{player} = \%player;
+        push @{ $new_game_state->{actors} }, \%player;
+    }
 
     return;
 }
@@ -168,7 +181,7 @@ sub apply_weapon_effects {
             life_time    => 0,
             max_life     => 60,
             grav_cancel  => 0,
-            is_player    => $is_player,
+            is_player    => $old_player->{is_player},
           };
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
@@ -274,7 +287,7 @@ sub render_world {
     ) for qw( 0.25 0.5 0.75 1 );
 
     my $sprite = $self->player_sprite;
-    for my $flier ( $player, @{ $game_state->{computers} } ) {
+    for my $flier ( $player, @{ $game_state->{actors} } ) {
 
         $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
         $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
