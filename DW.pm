@@ -79,18 +79,10 @@ sub update_game_state {
 
     my @old_bullets = @{ $old_game_state->{bullets} };
     my @new_bullets = @{ $new_game_state->{bullets} };
-    my @moved_bullets;
     for my $i ( 0 .. $#old_bullets ) {
-        next if $old_bullets[$i]->{life_time} > $old_bullets[$i]->{max_life};
         my @c = ( $old_bullets[$i], $old_game_state, $new_bullets[$i], $new_game_state, { thrust => 1 } );
         $self->apply_translation_forces( @c );
-        $new_bullets[$i]{life_time}++;
-        $new_bullets[$i]{life_time} += 12
-          if $new_bullets[$i]{y} > $old_game_state->{floor}
-          or $new_bullets[$i]{y} < $old_game_state->{ceiling};
-        push @moved_bullets, $new_bullets[$i];
     }
-    $new_game_state->{bullets} = \@moved_bullets;
 
     my @p = ( $old_game_state->{player}, $old_game_state, $new_game_state->{player}, $new_game_state, $client_state );
     if ( time - $self->game_state->{last_input} > 10 ) {
@@ -110,6 +102,13 @@ sub update_game_state {
         $self->apply_weapon_effects( @c );
     }
 
+    for my $i ( 0 .. $#old_bullets ) {
+        $new_bullets[$i]{life_time}++;
+        $new_bullets[$i]{life_time} += 12
+          if $new_bullets[$i]{y} > $old_game_state->{floor}
+          or $new_bullets[$i]{y} < $old_game_state->{ceiling};
+    }
+
     $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
     if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets}, "is_player" ) ) {
         $new_game_state->{player}{damage}++;
@@ -117,6 +116,7 @@ sub update_game_state {
     }
 
     @{ $new_game_state->{computers} } = grep !$self->was_hit( $_, $new_game_state->{bullets} ), @new_computers;
+    @{ $new_game_state->{bullets} } = grep { $_->{life_time} <= $_->{max_life} } @{ $new_game_state->{bullets} };
     push @{ $new_game_state->{computers} },
       {
         x => $old_game_state->{player}{x} + ( 1500 * rand ) - 750,
