@@ -65,14 +65,15 @@ sub on_keyup {
 }
 
 sub update_game_state {
-    my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
+    my ( $self, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
 
+    my $old_game_state = $self->game_state;
     my @old_actors = @{ $old_game_state->{actors} };
     my @new_actors = @{ $new_game_state->{actors} };
     for my $i ( 0 .. $#old_actors ) {
-        my $input = $old_actors[$i]->{input}->( $old_actors[$i], $old_game_state );
-        my @c = ( $old_actors[$i], $old_game_state, $new_actors[$i], $new_game_state, $input );
+        my $input = $old_actors[$i]->{input}->( $old_actors[$i] );
+        my @c = ( $old_actors[$i], $new_actors[$i], $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
@@ -147,15 +148,15 @@ sub update_game_state {
 }
 
 sub computer_ai {
-    my ( $self, $actor, $old_game_state ) = @_;
-    my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } @{ $old_game_state->{actors} };
+    my ( $self, $actor ) = @_;
+    my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } @{ $self->game_state->{actors} };
     return $self->simple_ai_step( $actor, $enemy );
 }
 
 sub player_control {
-    my ( $self, $actor, $old_game_state ) = @_;
-    return $self->client_state if time - $old_game_state->{last_input} <= 10;
-    return $self->computer_ai( $actor, $old_game_state );
+    my ( $self, $actor ) = @_;
+    return $self->client_state if time - $self->game_state->{last_input} <= 10;
+    return $self->computer_ai( $actor, $self->game_state );
 }
 
 sub was_hit {
@@ -173,7 +174,7 @@ sub was_hit {
 }
 
 sub apply_weapon_effects {
-    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input ) = @_;
+    my ( $self, $old_player, $new_player, $new_game_state, $input ) = @_;
     return if $old_player->{is_bullet};
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
@@ -221,11 +222,12 @@ sub simple_ai_step {
 }
 
 sub apply_translation_forces {
-    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $client_state ) = @_;
+    my ( $self, $old_player, $new_player, $new_game_state, $client_state ) = @_;
 
     my $x_speed_delta = 0;
     my $y_speed_delta = 0;
 
+    my $old_game_state = $self->game_state;
     my $stalled = ( $old_player->{y} > $old_game_state->{floor} or $old_player->{y} < $old_game_state->{ceiling} );
     my $gravity = $old_game_state->{gravity};
     $gravity *= $old_player->{grav_cancel} if $client_state->{thrust} and !$stalled;
@@ -258,7 +260,7 @@ sub apply_translation_forces {
 }
 
 sub apply_rotation_forces {
-    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $client_state ) = @_;
+    my ( $self, $old_player, $new_player, $new_game_state, $client_state ) = @_;
     return if !$client_state->{turn_left} and !$client_state->{turn_right};
 
     my $sign = $client_state->{turn_right} ? -1 : 1;

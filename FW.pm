@@ -64,7 +64,7 @@ sub on_event {
 sub on_move {
     my ( $self ) = @_;
     my $new_game_state = clone $self->game_state;
-    $self->update_game_state( $self->game_state, $new_game_state, $self->client_state );
+    $self->update_game_state( $new_game_state, $self->client_state );
     $self->game_state( $new_game_state );
     return;
 }
