@@ -113,7 +113,7 @@ sub update_game_state {
         input        => $self->curry::computer_ai,
         team         => 2,
       }
-      if $old_game_state->{player} and @{ $new_game_state->{actors} } < 10;
+      if $old_game_state->{player} and ( grep { !$_->{is_bullet} } @{ $new_game_state->{actors} } ) < 10;
 
     if ( !$old_game_state->{player} ) {
         my %player = (
