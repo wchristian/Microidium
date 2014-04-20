@@ -7,6 +7,7 @@ use SDLx::Sprite;
 use Math::Vec qw(NewVec);
 use List::Util qw( first min );
 use Carp::Always;
+use curry;
 
 use Moo;
 
@@ -73,15 +74,7 @@ sub update_game_state {
     my @old_actors = @{ $old_game_state->{actors} };
     my @new_actors = @{ $new_game_state->{actors} };
     for my $i ( 0 .. $#old_actors ) {
-        my $input =
-          ( $old_actors[$i]{input} eq 'player' )
-          ? (
-            ( time - $self->game_state->{last_input} > 10 )
-            ? $self->simple_ai_step( $old_game_state->{player},
-                first { $_ != $old_game_state->{player} } @{ $old_game_state->{actors} } )
-            : $client_state
-          )
-          : $self->simple_ai_step( $old_actors[$i], $old_game_state->{player} );
+        my $input = $old_actors[$i]->{input}->( $old_actors[$i], $old_game_state );
         my @c = ( $old_actors[$i], $old_game_state, $new_actors[$i], $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
@@ -122,7 +115,7 @@ sub update_game_state {
         gun_heat     => 0,
         gun_cooldown => 1,
         gun_use_heat => 60,
-        input        => 'computer',
+        input        => $self->curry::computer_ai,
         team         => 2,
       }
       if $old_game_state->{player} and @{ $new_game_state->{actors} } < 10;
@@ -143,7 +136,7 @@ sub update_game_state {
             gun_cooldown => 1,
             gun_use_heat => 10,
             damage       => 0,
-            input        => 'player',
+            input        => $self->curry::player_control,
             team         => 1,
         );
         $new_game_state->{player} = \%player;
@@ -151,6 +144,18 @@ sub update_game_state {
     }
 
     return;
+}
+
+sub computer_ai {
+    my ( $self, $actor, $old_game_state ) = @_;
+    my $enemy = first { $_->{team} != $actor->{team} } @{ $old_game_state->{actors} };
+    return $self->simple_ai_step( $actor, $old_game_state->{player} );
+}
+
+sub player_control {
+    my ( $self, $actor, $old_game_state ) = @_;
+    return $self->client_state if time - $old_game_state->{last_input} <= 10;
+    return $self->computer_ai( $actor, $old_game_state );
 }
 
 sub was_hit {
