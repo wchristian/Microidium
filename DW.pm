@@ -144,7 +144,7 @@ sub update_game_state {
 sub computer_ai {
     my ( $self, $actor, $old_game_state ) = @_;
     my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } @{ $old_game_state->{actors} };
-    return $self->simple_ai_step( $actor, $old_game_state->{player} );
+    return $self->simple_ai_step( $actor, $enemy );
 }
 
 sub player_control {
