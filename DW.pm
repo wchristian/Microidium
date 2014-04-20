@@ -11,7 +11,12 @@ use curry;
 
 use Moo;
 
-has player_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => "player.png" ) } );
+has player_sprites => (
+    is      => 'ro',
+    default => sub {
+        return { map { $_ => SDLx::Sprite->new( image => "player$_.png" ) } 1 .. 3, };
+    }
+);
 has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => "bullet.png" ) } );
 with 'FW';
 
@@ -111,7 +116,7 @@ sub update_game_state {
         gun_cooldown => 1,
         gun_use_heat => 60,
         input        => $self->curry::computer_ai,
-        team         => 2,
+        team         => ( rand > 0.5 ) ? 2 : 3,
       }
       if $old_game_state->{player} and ( grep { !$_->{is_bullet} } @{ $new_game_state->{actors} } ) < 10;
 
@@ -291,15 +296,17 @@ sub render_world {
         $stall_color, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
-    my $sprite        = $self->player_sprite;
+    my $sprites       = $self->player_sprites;
     my $bullet_sprite = $self->bullet_sprite;
     for my $flier ( $player, @{ $game_state->{actors} } ) {
+        my $sprite = $sprites->{ $flier->{team} };
         if ( $flier->{is_bullet} ) {
             $bullet_sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
             $bullet_sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
             $bullet_sprite->draw( $world );
         }
         else {
+
             $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
             $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
             $sprite->rotation( $flier->{rot} + 180 );
