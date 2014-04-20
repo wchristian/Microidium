@@ -75,8 +75,8 @@ sub update_game_state {
 
     for my $i ( 0 .. $#old_actors ) {
         next if !$new_actors[$i]{is_bullet};
-        $new_actors[$i]{life_time}++;
-        $new_actors[$i]{life_time} += 12
+        $new_actors[$i]{hp}--;
+        $new_actors[$i]{hp} -= 12
           if $new_actors[$i]{y} > $old_game_state->{floor}
           or $new_actors[$i]{y} < $old_game_state->{ceiling};
     }
@@ -92,7 +92,7 @@ sub update_game_state {
     @{ $new_game_state->{actors} } =
       grep {
         $_->{is_bullet}
-          ? ( $_->{life_time} <= $_->{max_life} )
+          ? ( $_->{hp} > 0 )
           : ( $_->{team} == $old_game_state->{player}{team} or !$self->was_hit( $_, $old_game_state->{actors} ) )
       } @{ $new_game_state->{actors} };
     push @{ $new_game_state->{actors} },
@@ -182,8 +182,7 @@ sub apply_weapon_effects {
             x            => $new_player->{x},
             y            => $new_player->{y},
             rot          => $new_player->{rot},
-            life_time    => 0,
-            max_life     => 60,
+            hp           => 60,
             grav_cancel  => 0,
             team         => $old_player->{team},
             is_bullet    => 1,
