@@ -32,7 +32,8 @@ sub _build_game_state {
         tick           => 0,
         last_input     => 0,
         player         => undef,
-        actors         => [],
+        actors         => {},
+        last_actor_id  => 0,
         player_was_hit => 0,
         ceiling        => -1800,
         floor          => 0,
@@ -64,62 +65,83 @@ sub on_keyup {
     return;
 }
 
+sub new_actor_id {
+    my ( $self, $state ) = @_;
+    return ++$state->{last_actor_id};
+}
+
+sub add_actor_to {
+    my ( $self, $game_state, $actor ) = @_;
+    $actor->{id} = $self->new_actor_id( $game_state );
+    $game_state->{actors}{ $actor->{id} } = $actor;
+    return;
+}
+
 sub update_game_state {
     my ( $self, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
 
     my $old_game_state = $self->game_state;
-    my @old_actors = @{ $old_game_state->{actors} };
-    my @new_actors = @{ $new_game_state->{actors} };
-    for my $i ( 0 .. $#old_actors ) {
-        my $input = $old_actors[$i]->{input}->( $old_actors[$i] );
-        my @c = ( $old_actors[$i], $new_actors[$i], $new_game_state, $input );
+    my $old_actors     = $old_game_state->{actors};
+    my $new_actors     = $new_game_state->{actors};
+    for my $id ( keys %{$old_actors} ) {
+        my $input = $old_actors->{$id}{input}->( $old_actors->{$id} );
+        my @c = ( $old_actors->{$id}, $new_actors->{$id}, $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
     }
 
-    for my $i ( 0 .. $#old_actors ) {
-        next if !$new_actors[$i]{is_bullet};
-        $new_actors[$i]{hp}--;
-        $new_actors[$i]{hp} -= 12
-          if $new_actors[$i]{y} > $old_game_state->{floor}
-          or $new_actors[$i]{y} < $old_game_state->{ceiling};
+    for my $id ( keys %{$old_actors} ) {
+        next if !$old_actors->{$id}{is_bullet};
+        $new_actors->{$id}{hp}--;
+        $new_actors->{$id}{hp} -= 12
+          if $old_actors->{$id}{y} > $old_game_state->{floor}
+          or $old_actors->{$id}{y} < $old_game_state->{ceiling};
     }
 
     if ( $old_game_state->{player} ) {
+        my $old_player = $old_game_state->{actors}{ $old_game_state->{player} };
+        my $new_player = $new_game_state->{actors}{ $old_game_state->{player} };
+
         $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
-        if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{actors} ) ) {
-            $new_game_state->{player}{damage}++;
+        if ( $self->was_hit( $old_player, $old_game_state->{actors} ) ) {
+            $new_player->{damage}++;
             $new_game_state->{player_was_hit} = $new_game_state->{tick};
         }
-    }
 
-    @{ $new_game_state->{actors} } =
-      grep {
-        $_->{is_bullet}
-          ? ( $_->{hp} > 0 )
-          : ( $_->{team} == $old_game_state->{player}{team} or !$self->was_hit( $_, $old_game_state->{actors} ) )
-      } @{ $new_game_state->{actors} };
-    push @{ $new_game_state->{actors} },
-      {
-        x => $old_game_state->{player}{x} + ( 1500 * rand ) - 750,
-        y => min( 0, $old_game_state->{player}{y} + ( 1500 * rand ) - 750 ),
-        x_speed      => 0,
-        y_speed      => 0,
-        turn_speed   => ( rand() * 5 ) + 1,
-        rot          => 180,
-        thrust_power => rand() + 0.2,
-        max_speed    => 8,
-        thrust_stall => 0.05,
-        grav_cancel  => 0.3,
-        gun_heat     => 0,
-        gun_cooldown => 1,
-        gun_use_heat => 60,
-        input        => $self->curry::computer_ai,
-        team         => ( rand > 0.5 ) ? 2 : 3,
-      }
-      if $old_game_state->{player} and ( grep { !$_->{is_bullet} } @{ $new_game_state->{actors} } ) < 10;
+        {
+            my $player_team = $old_player->{team};
+            my @dead_actors = grep {
+                $_->{is_bullet}
+                  ? ( $_->{hp} < 0 )
+                  : ( $_->{team} != $player_team and $self->was_hit( $_, $old_game_state->{actors} ) )
+            } values %{ $new_game_state->{actors} };
+            delete $new_game_state->{actors}{ $_->{id} } for @dead_actors;
+        }
+
+        $self->add_actor_to(
+            $new_game_state,
+            {
+                x => $old_player->{x} + ( 1500 * rand ) - 750,
+                y => min( 0, $old_player->{y} + ( 1500 * rand ) - 750 ),
+                x_speed      => 0,
+                y_speed      => 0,
+                turn_speed   => ( rand() * 5 ) + 1,
+                rot          => 180,
+                thrust_power => rand() + 0.2,
+                max_speed    => 8,
+                thrust_stall => 0.05,
+                grav_cancel  => 0.3,
+                gun_heat     => 0,
+                gun_cooldown => 1,
+                gun_use_heat => 60,
+                input        => $self->curry::computer_ai,
+                team         => ( rand > 0.5 ) ? 2 : 3,
+
+            }
+        ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
+    }
 
     if ( !$old_game_state->{player} ) {
         my %player = (
@@ -140,8 +162,8 @@ sub update_game_state {
             input        => $self->curry::player_control,
             team         => 1,
         );
-        $new_game_state->{player} = \%player;
-        push @{ $new_game_state->{actors} }, \%player;
+        $self->add_actor_to( $new_game_state, \%player );
+        $new_game_state->{player} = $player{id};
     }
 
     return;
@@ -149,7 +171,7 @@ sub update_game_state {
 
 sub computer_ai {
     my ( $self, $actor ) = @_;
-    my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } @{ $self->game_state->{actors} };
+    my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } values %{ $self->game_state->{actors} };
     return $self->simple_ai_step( $actor, $enemy );
 }
 
@@ -163,7 +185,7 @@ sub was_hit {
     my ( $self, $player, $actors ) = @_;
 
     my $player_vec = NewVec( $player->{x}, $player->{y} );
-    for my $bullet ( @{$actors} ) {
+    for my $bullet ( values %{$actors} ) {
         next if !$bullet->{is_bullet};
         next if $bullet->{team} == $player->{team};
         my $distance = NewVec( $player_vec->Minus( [ $bullet->{x}, $bullet->{y} ] ) )->Length;
@@ -178,8 +200,7 @@ sub apply_weapon_effects {
     return if $old_player->{is_bullet};
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
-        push @{ $new_game_state->{actors} },
-          {
+        my %bullet = (
             max_speed    => 13,
             thrust_power => 9,
             thrust_stall => 9,
@@ -193,7 +214,8 @@ sub apply_weapon_effects {
             team         => $old_player->{team},
             is_bullet    => 1,
             input        => sub { { thrust => 1 } },
-          };
+        );
+        $self->add_actor_to( $new_game_state, \%bullet );
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
     return;
@@ -273,7 +295,7 @@ sub apply_rotation_forces {
 
 sub render_world {
     my ( $self, $world, $game_state ) = @_;
-    my $player = $game_state->{player};
+    my $player = $game_state->{actors}{ $game_state->{player} };
 
     if ( ( my $ceil_height = $world->h / 2 - $player->{y} + $game_state->{ceiling} ) >= 0 ) {
         $world->draw_rect( [ 0, 0, $world->w, $ceil_height ], 0xff_30_30_ff );
@@ -300,7 +322,7 @@ sub render_world {
 
     my $sprites       = $self->player_sprites;
     my $bullet_sprite = $self->bullet_sprite;
-    for my $flier ( $player, @{ $game_state->{actors} } ) {
+    for my $flier ( $player, values %{ $game_state->{actors} } ) {
         my $sprite = $sprites->{ $flier->{team} };
         if ( $flier->{is_bullet} ) {
             $bullet_sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
@@ -329,13 +351,14 @@ sub render_world {
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
+    my $player = $game_state->{actors}{ $game_state->{player} };
     $self->draw_gfx_text( [ 0, 0 ],             0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
-    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "Damage: " . $self->game_state->{player}{damage} );
+    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "Damage: $player->{damage}" );
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
         0xff_ff_ff_ff, join ' ',
-        ( map $game_state->{player}{$_}, qw( x y rot ) ),
-        ( $game_state->{player}->{x_speed}**2 + $game_state->{player}->{y_speed}**2 )**0.5
+        ( map $player->{$_}, qw( x y rot ) ),
+        ( $player->{x_speed}**2 + $player->{y_speed}**2 )**0.5
     );
     $self->draw_gfx_text( [ 0, $self->h - 24 ], 0xff_ff_ff_ff, $self->fps );
     $self->draw_gfx_text( [ 0, $self->h - 16 ], 0xff_ff_ff_ff, $self->frame );
