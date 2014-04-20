@@ -29,7 +29,6 @@ sub _build_game_state {
         player         => undef,
         actors         => [],
         player_was_hit => 0,
-        bullets        => [],
         ceiling        => -1800,
         floor          => 0,
         gravity        => 0.15,
@@ -64,13 +63,6 @@ sub update_game_state {
     my ( $self, $old_game_state, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
 
-    my @old_bullets = @{ $old_game_state->{bullets} };
-    my @new_bullets = @{ $new_game_state->{bullets} };
-    for my $i ( 0 .. $#old_bullets ) {
-        my @c = ( $old_bullets[$i], $old_game_state, $new_bullets[$i], $new_game_state, { thrust => 1 } );
-        $self->apply_translation_forces( @c );
-    }
-
     my @old_actors = @{ $old_game_state->{actors} };
     my @new_actors = @{ $new_game_state->{actors} };
     for my $i ( 0 .. $#old_actors ) {
@@ -81,25 +73,28 @@ sub update_game_state {
         $self->apply_weapon_effects( @c );
     }
 
-    for my $i ( 0 .. $#old_bullets ) {
-        $new_bullets[$i]{life_time}++;
-        $new_bullets[$i]{life_time} += 12
-          if $new_bullets[$i]{y} > $old_game_state->{floor}
-          or $new_bullets[$i]{y} < $old_game_state->{ceiling};
+    for my $i ( 0 .. $#old_actors ) {
+        next if !$new_actors[$i]{is_bullet};
+        $new_actors[$i]{life_time}++;
+        $new_actors[$i]{life_time} += 12
+          if $new_actors[$i]{y} > $old_game_state->{floor}
+          or $new_actors[$i]{y} < $old_game_state->{ceiling};
     }
 
     if ( $old_game_state->{player} ) {
         $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
-        if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets} ) ) {
+        if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{actors} ) ) {
             $new_game_state->{player}{damage}++;
             $new_game_state->{player_was_hit} = $new_game_state->{tick};
         }
     }
 
     @{ $new_game_state->{actors} } =
-      grep { $_->{team} == $old_game_state->{player}{team} or !$self->was_hit( $_, $new_game_state->{bullets} ) }
-      @{ $new_game_state->{actors} };
-    @{ $new_game_state->{bullets} } = grep { $_->{life_time} <= $_->{max_life} } @{ $new_game_state->{bullets} };
+      grep {
+        $_->{is_bullet}
+          ? ( $_->{life_time} <= $_->{max_life} )
+          : ( $_->{team} == $old_game_state->{player}{team} or !$self->was_hit( $_, $old_game_state->{actors} ) )
+      } @{ $new_game_state->{actors} };
     push @{ $new_game_state->{actors} },
       {
         x => $old_game_state->{player}{x} + ( 1500 * rand ) - 750,
@@ -148,7 +143,7 @@ sub update_game_state {
 
 sub computer_ai {
     my ( $self, $actor, $old_game_state ) = @_;
-    my $enemy = first { $_->{team} != $actor->{team} } @{ $old_game_state->{actors} };
+    my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } @{ $old_game_state->{actors} };
     return $self->simple_ai_step( $actor, $old_game_state->{player} );
 }
 
@@ -159,10 +154,11 @@ sub player_control {
 }
 
 sub was_hit {
-    my ( $self, $player, $bullets ) = @_;
+    my ( $self, $player, $actors ) = @_;
 
     my $player_vec = NewVec( $player->{x}, $player->{y} );
-    for my $bullet ( @{$bullets} ) {
+    for my $bullet ( @{$actors} ) {
+        next if !$bullet->{is_bullet};
         next if $bullet->{team} == $player->{team};
         my $distance = NewVec( $player_vec->Minus( [ $bullet->{x}, $bullet->{y} ] ) )->Length;
         return 1 if $distance <= 32;
@@ -173,9 +169,10 @@ sub was_hit {
 
 sub apply_weapon_effects {
     my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input ) = @_;
+    return if $old_player->{is_bullet};
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
-        push @{ $new_game_state->{bullets} },
+        push @{ $new_game_state->{actors} },
           {
             max_speed    => 13,
             thrust_power => 9,
@@ -189,6 +186,8 @@ sub apply_weapon_effects {
             max_life     => 60,
             grav_cancel  => 0,
             team         => $old_player->{team},
+            is_bullet    => 1,
+            input        => sub { { thrust => 1 } },
           };
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
@@ -293,28 +292,28 @@ sub render_world {
         $stall_color, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
-    my $sprite = $self->player_sprite;
-    for my $flier ( $player, @{ $game_state->{actors} } ) {
-
-        $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
-        $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
-        $sprite->rotation( $flier->{rot} + 180 );
-        $sprite->clip(
-            [
-                $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
-                $sprite->{orig_surface}->h / 4 + ( $sprite->surface->h - $sprite->{orig_surface}->h ) / 2,
-                $sprite->{orig_surface}->w / 2,
-                $sprite->{orig_surface}->h / 2,
-            ]
-        );
-        $sprite->draw( $world );
-    }
-
+    my $sprite        = $self->player_sprite;
     my $bullet_sprite = $self->bullet_sprite;
-    for my $bullet ( @{ $game_state->{bullets} } ) {
-        $bullet_sprite->x( $bullet->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
-        $bullet_sprite->y( $bullet->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
-        $bullet_sprite->draw( $world );
+    for my $flier ( $player, @{ $game_state->{actors} } ) {
+        if ( $flier->{is_bullet} ) {
+            $bullet_sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
+            $bullet_sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
+            $bullet_sprite->draw( $world );
+        }
+        else {
+            $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
+            $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
+            $sprite->rotation( $flier->{rot} + 180 );
+            $sprite->clip(
+                [
+                    $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
+                    $sprite->{orig_surface}->h / 4 + ( $sprite->surface->h - $sprite->{orig_surface}->h ) / 2,
+                    $sprite->{orig_surface}->w / 2,
+                    $sprite->{orig_surface}->h / 2,
+                ]
+            );
+            $sprite->draw( $world );
+        }
     }
 
     return;
