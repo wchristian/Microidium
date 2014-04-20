@@ -85,19 +85,13 @@ sub update_game_state {
     my $old_actors     = $old_game_state->{actors};
     my $new_actors     = $new_game_state->{actors};
     for my $id ( keys %{$old_actors} ) {
-        my $input = $old_actors->{$id}{input}->( $old_actors->{$id} );
-        my @c = ( $old_actors->{$id}, $new_actors->{$id}, $new_game_state, $input );
+        my $actor = $old_actors->{$id};
+        my $input = $actor->{input}->( $actor );
+        my @c     = ( $actor, $new_actors->{$id}, $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
-    }
-
-    for my $id ( keys %{$old_actors} ) {
-        next if !$old_actors->{$id}{is_bullet};
-        $new_actors->{$id}{hp}--;
-        $new_actors->{$id}{hp} -= 12
-          if $old_actors->{$id}{y} > $old_game_state->{floor}
-          or $old_actors->{$id}{y} < $old_game_state->{ceiling};
+        $self->apply_location_damage( @c );
     }
 
     if ( $old_game_state->{player} ) {
@@ -138,7 +132,6 @@ sub update_game_state {
                 gun_use_heat => 60,
                 input        => $self->curry::computer_ai,
                 team         => ( rand > 0.5 ) ? 2 : 3,
-
             }
         ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
     }
@@ -205,25 +198,43 @@ sub was_hit {
     return;
 }
 
+sub apply_location_damage {
+    my ( $self, $actor, $new_actor, $new_game_state, $input ) = @_;
+    return if !$actor->{hp_loss_speed};
+
+    my $game_state = $self->game_state;
+    my $loss_key =
+        ( $actor->{y} > $game_state->{floor} )   ? 'floor'
+      : ( $actor->{y} < $game_state->{ceiling} ) ? 'ceil'
+      :                                            'normal';
+    $new_actor->{hp} -= $actor->{hp_loss_speed}{$loss_key};
+    return;
+}
+
 sub apply_weapon_effects {
     my ( $self, $old_player, $new_player, $new_game_state, $input ) = @_;
     return if $old_player->{is_bullet};
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
         my %bullet = (
-            max_speed    => 13,
-            thrust_power => 9,
-            thrust_stall => 9,
-            x_speed      => $new_player->{x_speed},
-            y_speed      => $new_player->{y_speed},
-            x            => $new_player->{x},
-            y            => $new_player->{y},
-            rot          => $new_player->{rot},
-            hp           => 60,
-            grav_cancel  => 0,
-            team         => $old_player->{team},
-            is_bullet    => 1,
-            input        => sub { { thrust => 1 } },
+            max_speed     => 13,
+            thrust_power  => 9,
+            thrust_stall  => 9,
+            x_speed       => $new_player->{x_speed},
+            y_speed       => $new_player->{y_speed},
+            x             => $new_player->{x},
+            y             => $new_player->{y},
+            rot           => $new_player->{rot},
+            hp            => 60,
+            hp_loss_speed => {
+                normal => 1,
+                floor  => 12,
+                ceil   => 12,
+            },
+            grav_cancel => 0,
+            team        => $old_player->{team},
+            is_bullet   => 1,
+            input       => sub { { thrust => 1 } },
         );
         $self->add_actor_to( $new_game_state, \%bullet );
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
