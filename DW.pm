@@ -97,14 +97,15 @@ sub update_game_state {
 
     if ( $old_game_state->{player} ) {
         $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
-        if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets}, "is_player" ) ) {
+        if ( $self->was_hit( $new_game_state->{player}, $new_game_state->{bullets} ) ) {
             $new_game_state->{player}{damage}++;
             $new_game_state->{player_was_hit} = $new_game_state->{tick};
         }
     }
 
     @{ $new_game_state->{actors} } =
-      grep { $_->{is_player} or !$self->was_hit( $_, $new_game_state->{bullets} ) } @{ $new_game_state->{actors} };
+      grep { $_->{team} == $old_game_state->{player}{team} or !$self->was_hit( $_, $new_game_state->{bullets} ) }
+      @{ $new_game_state->{actors} };
     @{ $new_game_state->{bullets} } = grep { $_->{life_time} <= $_->{max_life} } @{ $new_game_state->{bullets} };
     push @{ $new_game_state->{actors} },
       {
@@ -122,6 +123,7 @@ sub update_game_state {
         gun_cooldown => 1,
         gun_use_heat => 60,
         input        => 'computer',
+        team         => 2,
       }
       if $old_game_state->{player} and @{ $new_game_state->{actors} } < 10;
 
@@ -142,7 +144,7 @@ sub update_game_state {
             gun_use_heat => 10,
             damage       => 0,
             input        => 'player',
-            is_player    => 1,
+            team         => 1,
         );
         $new_game_state->{player} = \%player;
         push @{ $new_game_state->{actors} }, \%player;
@@ -152,11 +154,11 @@ sub update_game_state {
 }
 
 sub was_hit {
-    my ( $self, $player, $bullets, $is_player ) = @_;
+    my ( $self, $player, $bullets ) = @_;
 
     my $player_vec = NewVec( $player->{x}, $player->{y} );
     for my $bullet ( @{$bullets} ) {
-        next if ( $is_player and $bullet->{is_player} ) or ( ( !$is_player and !$bullet->{is_player} ) );
+        next if $bullet->{team} == $player->{team};
         my $distance = NewVec( $player_vec->Minus( [ $bullet->{x}, $bullet->{y} ] ) )->Length;
         return 1 if $distance <= 32;
     }
@@ -165,7 +167,7 @@ sub was_hit {
 }
 
 sub apply_weapon_effects {
-    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input, $is_player ) = @_;
+    my ( $self, $old_player, $old_game_state, $new_player, $new_game_state, $input ) = @_;
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
         push @{ $new_game_state->{bullets} },
@@ -181,7 +183,7 @@ sub apply_weapon_effects {
             life_time    => 0,
             max_life     => 60,
             grav_cancel  => 0,
-            is_player    => $old_player->{is_player},
+            team         => $old_player->{team},
           };
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
