@@ -171,8 +171,18 @@ sub update_game_state {
 
 sub computer_ai {
     my ( $self, $actor ) = @_;
-    my $enemy = first { !$_->{is_bullet} and $_->{team} != $actor->{team} } values %{ $self->game_state->{actors} };
-    return $self->simple_ai_step( $actor, $enemy );
+    delete $actor->{enemy} if $actor->{enemy} and !$self->game_state->{actors}{ $actor->{enemy} };
+    $actor->{enemy} ||= $self->find_enemy( $actor );
+    return $self->simple_ai_step( $actor, $actor->{enemy} );
+}
+
+sub find_enemy {
+    my ( $self, $actor ) = @_;
+    my @possible_enemies =
+      grep { !$_->{is_bullet} and $_->{team} != $actor->{team} } values %{ $self->game_state->{actors} };
+    return if !@possible_enemies;
+    my $id = int( rand() * @possible_enemies );
+    return $possible_enemies[$id]->{id};
 }
 
 sub player_control {
@@ -223,6 +233,7 @@ sub apply_weapon_effects {
 
 sub simple_ai_step {
     my ( $self, $computer, $player ) = @_;
+    $player = $self->game_state->{actors}{ $computer->{enemy} } if $computer->{enemy};
     return if !$player;
 
     my @vec_to_player = NewVec( $computer->{x}, $computer->{y} )->Minus( [ $player->{x}, $player->{y} ] );
