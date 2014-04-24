@@ -24,7 +24,16 @@ __PACKAGE__->new->run if !caller;
 
 1;
 
-sub _build_client_state { { fire => 0, thrust => 0, turn_left => 0, turn_right => 0, zoom => 1 } }
+sub _build_client_state {
+    {
+        fire       => 0,
+        thrust     => 0,
+        turn_left  => 0,
+        turn_right => 0,
+        zoom       => 1,
+        camera     => { x => 0, y => 0 },
+    };
+}
 
 sub _build_game_state {
     my ( $self ) = @_;
@@ -317,28 +326,30 @@ sub apply_rotation_forces {
 
 sub render_world {
     my ( $self, $world, $game_state ) = @_;
-    my $player = $game_state->{actors}{ $game_state->{player} };
+    my $player = $game_state->{player} ? $game_state->{actors}{ $game_state->{player} } : undef;
+    my $cam = $self->client_state->{camera};
+    @{$cam}{qw(x y)} = @{$player}{qw(x y)} if $player;
 
-    if ( ( my $ceil_height = $world->h / 2 - $player->{y} + $game_state->{ceiling} ) >= 0 ) {
+    if ( ( my $ceil_height = $world->h / 2 - $cam->{y} + $game_state->{ceiling} ) >= 0 ) {
         $world->draw_rect( [ 0, 0, $world->w, $ceil_height ], 0xff_30_30_ff );
         $world->draw_line( [ 0, $ceil_height ], [ $world->w, $ceil_height ], 0xff_ff_ff_ff, 0 );
     }
 
-    if ( ( my $floor_height = $world->h / 2 - $player->{y} + $game_state->{floor} ) <= $world->h ) {
+    if ( ( my $floor_height = $world->h / 2 - $cam->{y} + $game_state->{floor} ) <= $world->h ) {
         $world->draw_rect( [ 0, $floor_height, $world->w, $world->h - $floor_height ], 0xff_30_30_ff );
         $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
     }
 
     my $stall_color = $game_state->{player_was_hit} ? 0xff_ff_ff_88 : 0xff_ff_ff_44;
     $world->draw_line(
-        [ ( $world->w * $_ - $player->{x} ) % $world->w, 0, ],
-        [ ( $world->w * $_ - $player->{x} ) % $world->w, $world->h ],
+        [ ( $world->w * $_ - $cam->{x} ) % $world->w, 0, ],
+        [ ( $world->w * $_ - $cam->{x} ) % $world->w, $world->h ],
         $stall_color, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
     $world->draw_line(
-        [ 0, ( $world->h * $_ - $player->{y} ) % $world->h ],
-        [ $world->w, ( $world->h * $_ - $player->{y} ) % $world->h ],
+        [ 0, ( $world->h * $_ - $cam->{y} ) % $world->h ],
+        [ $world->w, ( $world->h * $_ - $cam->{y} ) % $world->h ],
         $stall_color, 0
     ) for qw( 0.25 0.5 0.75 1 );
 
@@ -347,14 +358,14 @@ sub render_world {
     for my $flier ( $player, values %{ $game_state->{actors} } ) {
         my $sprite = $sprites->{ $flier->{team} };
         if ( $flier->{is_bullet} ) {
-            $bullet_sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
-            $bullet_sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
+            $bullet_sprite->x( $flier->{x} - $cam->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
+            $bullet_sprite->y( $flier->{y} - $cam->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
             $bullet_sprite->draw( $world );
         }
         else {
 
-            $sprite->x( $flier->{x} - $player->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
-            $sprite->y( $flier->{y} - $player->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
+            $sprite->x( $flier->{x} - $cam->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
+            $sprite->y( $flier->{y} - $cam->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
             $sprite->rotation( $flier->{rot} + 180 );
             $sprite->clip(
                 [
