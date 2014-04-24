@@ -112,10 +112,8 @@ sub update_game_state {
         my $new_player = $new_game_state->{actors}{$old_player_id};
 
         $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
-        if ( $self->was_hit( $old_player, $old_game_state->{actors} ) ) {
-            $new_player->{damage}++;
-            $new_game_state->{player_was_hit} = $new_game_state->{tick};
-        }
+        $new_game_state->{player_was_hit} = $new_game_state->{tick}
+          if $new_player->{hp} and $old_player->{hp} > $new_player->{hp};
 
         $self->add_actor_to(
             $new_game_state,
@@ -155,7 +153,6 @@ sub update_game_state {
             gun_heat     => 0,
             gun_cooldown => 1,
             gun_use_heat => 10,
-            damage       => 0,
             input        => $self->curry::player_control,
             team         => 1,
             hp           => 12,
@@ -385,7 +382,7 @@ sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player = $game_state->{player} ? $game_state->{actors}{ $game_state->{player} } : undef;
     $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
-    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "Damage: $player->{damage}" ) if $player;
+    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "HP: $player->{hp}" ) if $player;
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
         0xff_ff_ff_ff, join ' ',
