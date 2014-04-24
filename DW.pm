@@ -103,9 +103,11 @@ sub update_game_state {
         $self->apply_location_damage( @c );
     }
 
-    if ( $old_game_state->{player} ) {
-        my $old_player = $old_game_state->{actors}{ $old_game_state->{player} };
-        my $new_player = $new_game_state->{actors}{ $old_game_state->{player} };
+    my $old_player_id = $old_game_state->{player};
+    my $old_player = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
+    $new_game_state->{player} = undef if !$old_player;
+    if ( $old_player ) {
+        my $new_player = $new_game_state->{actors}{$old_player_id};
 
         $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
         if ( $self->was_hit( $old_player, $old_game_state->{actors} ) ) {
@@ -356,6 +358,7 @@ sub render_world {
     my $sprites       = $self->player_sprites;
     my $bullet_sprite = $self->bullet_sprite;
     for my $flier ( $player, values %{ $game_state->{actors} } ) {
+        next if !$flier;
         my $sprite = $sprites->{ $flier->{team} };
         if ( $flier->{is_bullet} ) {
             $bullet_sprite->x( $flier->{x} - $cam->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
@@ -384,15 +387,15 @@ sub render_world {
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
-    my $player = $game_state->{actors}{ $game_state->{player} };
-    $self->draw_gfx_text( [ 0, 0 ],             0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
-    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "Damage: $player->{damage}" );
+    my $player = $game_state->{player} ? $game_state->{actors}{ $game_state->{player} } : undef;
+    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
+    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "Damage: $player->{damage}" ) if $player;
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
         0xff_ff_ff_ff, join ' ',
         ( map $player->{$_}, qw( x y rot ) ),
         ( $player->{x_speed}**2 + $player->{y_speed}**2 )**0.5
-    );
+    ) if $player;
     $self->draw_gfx_text( [ 0, $self->h - 24 ], 0xff_ff_ff_ff, $self->fps );
     $self->draw_gfx_text( [ 0, $self->h - 16 ], 0xff_ff_ff_ff, $self->frame );
     $self->draw_gfx_text( [ 0, $self->h - 8 ],  0xff_ff_ff_ff, $game_state->{tick} );
