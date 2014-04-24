@@ -101,6 +101,8 @@ sub update_game_state {
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
         $self->apply_location_damage( @c );
+        $self->apply_collision_effects( @c );
+        delete $new_actors->{$id} if $new_actors->{$id}{hp} <= 0;
     }
 
     my $old_player_id = $old_game_state->{player};
@@ -113,16 +115,6 @@ sub update_game_state {
         if ( $self->was_hit( $old_player, $old_game_state->{actors} ) ) {
             $new_player->{damage}++;
             $new_game_state->{player_was_hit} = $new_game_state->{tick};
-        }
-
-        {
-            my $player_team = $old_player->{team};
-            my @dead_actors = grep {
-                $_->{is_bullet}
-                  ? ( $_->{hp} < 0 )
-                  : ( $_->{team} != $player_team and $self->was_hit( $_, $old_game_state->{actors} ) )
-            } values %{ $new_game_state->{actors} };
-            delete $new_game_state->{actors}{ $_->{id} } for @dead_actors;
         }
 
         $self->add_actor_to(
@@ -143,6 +135,7 @@ sub update_game_state {
                 gun_use_heat => 60,
                 input        => $self->curry::computer_ai,
                 team         => ( rand > 0.5 ) ? 2 : 3,
+                hp           => 1,
             }
         ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
     }
@@ -165,12 +158,29 @@ sub update_game_state {
             damage       => 0,
             input        => $self->curry::player_control,
             team         => 1,
+            hp           => 12,
         );
         $self->add_actor_to( $new_game_state, \%player );
         $new_game_state->{player} = $player{id};
     }
 
     return;
+}
+
+sub apply_collision_effects {
+    my ( $self, $actor, $new_actor, $new_game_state, $input ) = @_;
+    my @collisions = $self->collisions( $actor, $self->game_state->{actors} );
+    for my $other ( @collisions ) {
+        $new_actor->{hp} -= 1 if $other->{team} != $actor->{team};
+    }
+    return;
+}
+
+sub collisions {
+    my ( $self, $actor, $actors ) = @_;
+    my $actor_vec = NewVec( $actor->{x}, $actor->{y} );
+    my @collided = grep { 32 > NewVec( $actor_vec->Minus( [ $_->{x}, $_->{y} ] ) )->Length } values %{$actors};
+    return @collided;
 }
 
 sub computer_ai {
@@ -193,20 +203,6 @@ sub player_control {
     my ( $self, $actor ) = @_;
     return $self->client_state if time - $self->game_state->{last_input} <= 10;
     return $self->computer_ai( $actor, $self->game_state );
-}
-
-sub was_hit {
-    my ( $self, $player, $actors ) = @_;
-
-    my $player_vec = NewVec( $player->{x}, $player->{y} );
-    for my $bullet ( values %{$actors} ) {
-        next if !$bullet->{is_bullet};
-        next if $bullet->{team} == $player->{team};
-        my $distance = NewVec( $player_vec->Minus( [ $bullet->{x}, $bullet->{y} ] ) )->Length;
-        return 1 if $distance <= 32;
-    }
-
-    return;
 }
 
 sub apply_location_damage {
