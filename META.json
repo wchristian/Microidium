@@ -1,0 +1,112 @@
+{
+   "abstract" : "an asteroid-like game",
+   "author" : [
+      "Christian Walde <walde.christian@gmail.com>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Dist::Zilla version 5.013, CPAN::Meta::Converter version 2.140640",
+   "license" : [
+      "unrestricted"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Microidium",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "xt",
+         "examples",
+         "corpus"
+      ],
+      "package" : [
+         "DB"
+      ]
+   },
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "6.30",
+            "File::ShareDir::Install" : "0.03"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Pod::Coverage::TrustPod" : "0",
+            "Test::CPAN::Meta" : "0",
+            "Test::Pod" : "1.41",
+            "Test::Pod::Coverage" : "1.08"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Carp::Always" : "0",
+            "Clone" : "0",
+            "File::ShareDir" : "0",
+            "List::Util" : "0",
+            "Math::Trig" : "0",
+            "Math::Vec" : "0",
+            "Moo" : "0",
+            "Moo::Role" : "0",
+            "SDL" : "0",
+            "SDL::Constants" : "0",
+            "SDL::GFX::Rotozoom" : "0",
+            "SDLx::App" : "0",
+            "SDLx::Sprite" : "0",
+            "Sub::Exporter::Simple" : "0",
+            "Time::HiRes" : "0",
+            "curry" : "0",
+            "lib" : "0",
+            "perl" : "5.010"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "File::Spec" : "0",
+            "File::Temp" : "0",
+            "IO::Handle" : "0",
+            "IPC::Open3" : "0",
+            "Microidium::Client" : "0",
+            "Test::InDistDir" : "0",
+            "Test::More" : "0",
+            "strict" : "0",
+            "strictures" : "0",
+            "warnings" : "0"
+         }
+      }
+   },
+   "provides" : {
+      "Microidium" : {
+         "file" : "lib/Microidium.pm",
+         "version" : "0.000001"
+      },
+      "Microidium::ClientRole" : {
+         "file" : "lib/Microidium/ClientRole.pm",
+         "version" : "0.000001"
+      },
+      "Microidium::Helpers" : {
+         "file" : "lib/Microidium/Helpers.pm",
+         "version" : "0.000001"
+      },
+      "Microidium::SDLRole" : {
+         "file" : "lib/Microidium/SDLRole.pm",
+         "version" : "0.000001"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "mailto" : "bug-microidium at rt.cpan.org",
+         "web" : "http://rt.cpan.org/Public/Dist/Display.html?Name=Microidium"
+      },
+      "homepage" : "https://github.com/wchristian/Microidium",
+      "repository" : {
+         "type" : "git",
+         "url" : "https://github.com/wchristian/Microidium.git",
+         "web" : "https://github.com/wchristian/Microidium"
+      }
+   },
+   "version" : "0.000001"
+}
+

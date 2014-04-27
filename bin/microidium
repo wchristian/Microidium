@@ -1,0 +1,11 @@
+package microidium;
+
+# VERSION
+
+use lib '../lib';
+use lib 'lib';
+use Microidium;
+
+Microidium->new->run;
+
+1;

@@ -1,4 +1,6 @@
-package FW;
+package Microidium::SDLRole;
+
+# VERSION
 
 use SDL            ();
 use SDLx::App      ();

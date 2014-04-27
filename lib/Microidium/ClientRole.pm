@@ -1,5 +1,8 @@
-package DW;
+package Microidium::ClientRole;
 
+# VERSION
+
+use lib '..';
 use 5.010;
 use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d );
 use Math::Trig qw' deg2rad rad2deg ';
@@ -8,19 +11,17 @@ use Math::Vec qw(NewVec);
 use List::Util qw( first min );
 use Carp::Always;
 use curry;
+use Microidium::Helpers 'dfile';
 
-use Moo;
+use Moo::Role;
 
 has player_sprites => (
     is      => 'ro',
     default => sub {
-        return { map { $_ => SDLx::Sprite->new( image => "player$_.png" ) } 1 .. 3, };
+        return { map { $_ => SDLx::Sprite->new( image => dfile "player$_.png" ) } 1 .. 3, };
     }
 );
-has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => "bullet.png" ) } );
-with 'FW';
-
-__PACKAGE__->new->run if !caller;
+has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => dfile "bullet.png" ) } );
 
 1;
 
