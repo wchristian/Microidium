@@ -8,7 +8,7 @@ use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n );
 use Math::Trig qw' deg2rad rad2deg ';
 use SDLx::Sprite;
 use Math::Vec qw(NewVec);
-use List::Util qw( first min );
+use List::Util qw( first min max );
 use Carp::Always;
 use curry;
 use Microidium::Helpers 'dfile';
@@ -24,14 +24,11 @@ has player_sprites => (
 );
 has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => dfile "bullet.png" ) } );
 has pryo => ( is => 'lazy', builder => 1 );
+has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
 
 1;
 
-sub _build_pryo {
-    my ( $self ) = @_;
-    my $pryo = PryoNet::Client->new;
-    return $pryo;
-}
+sub _build_pryo { PryoNet::Client->new( client => shift ) }
 
 sub _build_client_state {
     {
@@ -66,7 +63,7 @@ sub on_keydown {
     $self->game_state->{last_input} = time;
     my $sym = $event->key_sym;
     if ( my $tcp = $self->pryo->tcp ) {
-        print "sent: DOWN $sym\n";
+        $self->log( "sent: DOWN $sym" );
         $self->pryo->write( "DOWN $sym" );
     }
     $self->stop if $sym == SDLK_q;
@@ -81,7 +78,7 @@ sub on_keyup {
     my ( $self, $event ) = @_;
     my $sym = $event->key_sym;
     if ( my $tcp = $self->pryo->tcp ) {
-        print "sent: UP $sym\n";
+        $self->log( "sent: UP $sym" );
         $self->pryo->write( "UP $sym" );
     }
     $self->client_state->{thrust}     = 0 if $sym == SDLK_UP;
@@ -409,5 +406,12 @@ sub render_ui {
     $self->draw_gfx_text( [ 0, $self->h - 24 ], 0xff_ff_ff_ff, $self->fps );
     $self->draw_gfx_text( [ 0, $self->h - 16 ], 0xff_ff_ff_ff, $self->frame );
     $self->draw_gfx_text( [ 0, $self->h - 8 ],  0xff_ff_ff_ff, $game_state->{tick} );
+
+    my $con = $self->console;
+    my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
+    $self->draw_gfx_text( [ 0, 8 + $_ * 8 ], 0xff_ff_ff_ff, $to_display[$_] ) for 0 .. $#to_display;
+
     return;
 }
+
+sub log { push @{ shift->console }, @_ }

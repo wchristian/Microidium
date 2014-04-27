@@ -15,9 +15,12 @@ use Moo::Role;
 
 has loop => ( is => 'ro', default => sub { IO::Async::Loop->new } );
 has tcp => ( is => 'rw' );
+has client => ( is => 'ro', required => 1 );
 
 sub connect {
     my ( $self, $host, $tcp_port ) = @_;
+
+    my $client = $self->client;
 
     $self->loop->connect(
         host      => $host,
@@ -30,7 +33,7 @@ sub connect {
                     my ( $self, $buffref, $eof ) = @_;
                     while ( $$buffref =~ s/^(.*)\n// ) {
                         my $got = decode_sereal( $1 );
-                        print "got: $got\n";
+                        $client->log( "got: $got" );
                     }
                     return 0;
                 },
