@@ -53,4 +53,11 @@ sub listen {
     return;
 }
 
+sub write {
+    my ( $self, $msg ) = @_;
+    my $send = encode_sereal( $msg );
+    $_->write( "$send\n" ) for @{ $self->clients };
+    return;
+}
+
 1;
