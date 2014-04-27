@@ -2,6 +2,7 @@ package PryoNet::ClientRole;
 
 # VERSION
 
+use Sereal qw( encode_sereal decode_sereal );
 use IO::Async::Loop;
 
 {    # preload these to avoid frame drops
@@ -27,7 +28,10 @@ sub connect {
             $stream->configure(
                 on_read => sub {
                     my ( $self, $buffref, $eof ) = @_;
-                    print $$buffref;
+                    while ( $$buffref =~ s/^(.*)\n// ) {
+                        my $got = decode_sereal( $1 );
+                        print "got: $got\n";
+                    }
                     return 0;
                 },
                 autoflush => 1,
@@ -40,6 +44,13 @@ sub connect {
         on_connect_error => sub { die "Cannot connect"; },
     );
 
+    return;
+}
+
+sub write {
+    my ( $self, $msg ) = @_;
+    my $send = encode_sereal( $msg );
+    $self->tcp->write( "$send\n" );
     return;
 }
 

@@ -23,6 +23,7 @@ my $loop = IO::Async::Loop->new;
 
 package ChatListener;
 use base qw( IO::Async::Listener );
+use Sereal qw( encode_sereal decode_sereal );
 
 my @clients;
 
@@ -35,19 +36,20 @@ sub on_stream {
     $stream->configure(
         on_read => sub {
             my ( $self, $buffref, $eof ) = @_;
-            #while ( $$buffref =~ s/^(.*\n)// ) {                  # eat a line from the stream input
-                print "$peeraddr: $$buffref\n";
-                $_ == $self
-                  or $_->write( "$peeraddr: $$buffref" )
-                  for @clients;                                   # Reflect it to all but the stream who wrote it
-            #}
+            while ( $$buffref =~ s/^(.*)\n// ) {                  # eat a line from the stream input
+                my $got = decode_sereal( $1 );
+                print "$got\n";
+
+                #$_ == $self or
+                $_->write( encode_sereal( $got ) . "\n" ) for @clients;  # Reflect it to all but the stream who wrote it
+            }
             return 0;
         },
         on_closed => sub {
             my ( $self ) = @_;
             @clients = grep { $_ != $self } @clients;
             print "$peeraddr leaves\n";
-            $_->write( "$peeraddr leaves\n" ) for @clients;       # Inform the others
+            $_->write( "$peeraddr leaves\n" ) for @clients;              # Inform the others
         },
     );
     $loop->add( $stream );

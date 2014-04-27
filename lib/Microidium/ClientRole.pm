@@ -65,6 +65,10 @@ sub on_keydown {
     my ( $self, $event ) = @_;
     $self->game_state->{last_input} = time;
     my $sym = $event->key_sym;
+    if ( my $tcp = $self->pryo->tcp ) {
+        print "sent: DOWN $sym\n";
+        $self->pryo->write( "DOWN $sym" );
+    }
     $self->stop if $sym == SDLK_q;
     $self->client_state->{thrust}     = 1 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 1 if $sym == SDLK_LEFT;
@@ -77,12 +81,8 @@ sub on_keyup {
     my ( $self, $event ) = @_;
     my $sym = $event->key_sym;
     if ( my $tcp = $self->pryo->tcp ) {
-        print "$sym\n";
-        $tcp->write( $sym )->on_ready(
-            sub {
-                eval { shift->get; 1 } or warn "failed: $@";
-            }
-        );
+        print "sent: UP $sym\n";
+        $self->pryo->write( "UP $sym" );
     }
     $self->client_state->{thrust}     = 0 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 0 if $sym == SDLK_LEFT;
