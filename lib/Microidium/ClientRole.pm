@@ -4,7 +4,7 @@ package Microidium::ClientRole;
 
 use lib '..';
 use 5.010;
-use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d );
+use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n );
 use Math::Trig qw' deg2rad rad2deg ';
 use SDLx::Sprite;
 use Math::Vec qw(NewVec);
@@ -12,6 +12,7 @@ use List::Util qw( first min );
 use Carp::Always;
 use curry;
 use Microidium::Helpers 'dfile';
+use PryoNet::Client;
 
 use Moo::Role;
 
@@ -22,8 +23,15 @@ has player_sprites => (
     }
 );
 has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => dfile "bullet.png" ) } );
+has pryo => ( is => 'lazy', builder => 1 );
 
 1;
+
+sub _build_pryo {
+    my ( $self ) = @_;
+    my $pryo = PryoNet::Client->new;
+    return $pryo;
+}
 
 sub _build_client_state {
     {
@@ -68,10 +76,19 @@ sub on_keydown {
 sub on_keyup {
     my ( $self, $event ) = @_;
     my $sym = $event->key_sym;
+    if ( my $tcp = $self->pryo->tcp ) {
+        print "$sym\n";
+        $tcp->write( $sym )->on_ready(
+            sub {
+                eval { shift->get; 1 } or warn "failed: $@";
+            }
+        );
+    }
     $self->client_state->{thrust}     = 0 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 0 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 0 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 0 if $sym == SDLK_d;
+    $self->pryo->connect( "127.0.0.1", 19366 ) if $sym == SDLK_n;
     return;
 }
 
@@ -90,6 +107,8 @@ sub add_actor_to {
 sub update_game_state {
     my ( $self, $new_game_state, $client_state ) = @_;
     $new_game_state->{tick}++;
+
+    $self->pryo->loop->loop_once( 0 );
 
     my $old_game_state = $self->game_state;
     my $old_actors     = $old_game_state->{actors};
