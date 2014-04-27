@@ -111,9 +111,10 @@ sub update_game_state {
     my $old_actors     = $old_game_state->{actors};
     my $new_actors     = $new_game_state->{actors};
     for my $id ( keys %{$old_actors} ) {
-        my $actor = $old_actors->{$id};
-        my $input = $actor->{input}->( $actor );
-        my @c     = ( $actor, $new_actors->{$id}, $new_game_state, $input );
+        my $actor      = $old_actors->{$id};
+        my $input_meth = $actor->{input};
+        my $input      = $self->$input_meth( $actor );
+        my @c          = ( $actor, $new_actors->{$id}, $new_game_state, $input );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
@@ -148,7 +149,7 @@ sub update_game_state {
                 gun_heat     => 0,
                 gun_cooldown => 1,
                 gun_use_heat => 60,
-                input        => $self->curry::computer_ai,
+                input        => "computer_ai",
                 team         => ( rand > 0.5 ) ? 2 : 3,
                 hp           => 1,
             }
@@ -170,7 +171,7 @@ sub update_game_state {
             gun_heat     => 0,
             gun_cooldown => 1,
             gun_use_heat => 10,
-            input        => $self->curry::player_control,
+            input        => "player_control",
             team         => 1,
             hp           => 12,
         );
@@ -252,13 +253,15 @@ sub apply_weapon_effects {
             grav_cancel => 0,
             team        => $old_player->{team},
             is_bullet   => 1,
-            input       => sub { { thrust => 1 } },
+            input       => "perma_thrust",
         );
         $self->add_actor_to( $new_game_state, \%bullet );
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
     return;
 }
+
+sub perma_thrust { { thrust => 1 } }
 
 sub simple_ai_step {
     my ( $self, $computer, $player ) = @_;
