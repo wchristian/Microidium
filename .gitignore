@@ -19,5 +19,6 @@
 /PM_to_blib
 /MYMETA.yml
 /Microidium-*
-
-
+/nytprof*
+/IO-Async-*
+/kryonet
