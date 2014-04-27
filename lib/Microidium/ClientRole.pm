@@ -186,8 +186,7 @@ sub update_game_state {
 
 sub apply_collision_effects {
     my ( $self, $actor, $new_actor, $new_game_state, $input ) = @_;
-    my @collisions = $self->collisions( $actor, $self->game_state->{actors} );
-    for my $other ( @collisions ) {
+    for my $other ( $self->collisions( $actor, $self->game_state->{actors} ) ) {
         $new_actor->{hp} -= 1 if $other->{team} != $actor->{team};
     }
     return;
@@ -195,9 +194,7 @@ sub apply_collision_effects {
 
 sub collisions {
     my ( $self, $actor, $actors ) = @_;
-    my $actor_vec = NewVec( $actor->{x}, $actor->{y} );
-    my @collided = grep { 32 > NewVec( $actor_vec->Minus( [ $_->{x}, $_->{y} ] ) )->Length } values %{$actors};
-    return @collided;
+    return grep { 32 > sqrt( ( $actor->{x} - $_->{x} )**2 + ( $actor->{y} - $_->{y} )**2 ) } values %{$actors};
 }
 
 sub computer_ai {
@@ -271,8 +268,8 @@ sub simple_ai_step {
     $player = $self->game_state->{actors}{ $computer->{enemy} } if $computer->{enemy};
     return if !$player;
 
-    my @vec_to_player = NewVec( $computer->{x}, $computer->{y} )->Minus( [ $player->{x}, $player->{y} ] );
-    my $dot_product   = NewVec( @vec_to_player )->Dot( [ 0, -1 ] );
+    my @vec_to_player = ( $computer->{x} - $player->{x}, $computer->{y} - $player->{y} );
+    my $dot_product   = Math::Vec->new( @vec_to_player )->Dot( [ 0, -1 ] );
     my $perpDot       = $vec_to_player[0] * -1 - $vec_to_player[1] * 0;
     my $angle_to_down = rad2deg atan2( $perpDot, $dot_product );
     my $comp_rot      = $computer->{rot};
