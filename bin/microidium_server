@@ -1,0 +1,11 @@
+package microidium_server;
+
+# VERSION
+
+use lib '../lib';
+use lib 'lib';
+use Microidium::Server;
+
+Microidium::Server->new->run;
+
+1;
