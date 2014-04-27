@@ -5,5 +5,6 @@ package Microidium::Server;
 use Moo;
 
 with "Microidium::ServerRole";
+with "Microidium::LogicRole";
 
 1;
