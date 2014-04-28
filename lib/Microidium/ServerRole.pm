@@ -29,7 +29,7 @@ sub run {
             my $new_game_state = clone $self->game_state;
             $self->update_game_state( $new_game_state );
             $self->game_state( $new_game_state );
-            $pryo->write( "$new_game_state $tick " . time . " You've had a minute" );
+            $pryo->write( $new_game_state );
         },
     );
 

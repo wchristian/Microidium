@@ -31,7 +31,7 @@ sub connect {
                 on_read => sub {
                     my ( $stream, $buffref, $eof ) = @_;
                     if ( my $frame = $self->extract_frame( $buffref ) ) {
-                        $client->log( "got: $frame" );
+                        $client->log( "got: " . ( ref $frame ? $frame->{tick} : $frame ) );
                     }
                     return 0;
                 },
