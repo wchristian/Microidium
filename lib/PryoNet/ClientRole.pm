@@ -30,7 +30,7 @@ sub connect {
             $stream->configure(
                 on_read => sub {
                     my ( $stream, $buffref, $eof ) = @_;
-                    if ( my $frame = $self->extract_frame( $buffref ) ) {
+                    while ( my $frame = $self->extract_frame( $buffref ) ) {
                         $client->log( "got: " . ( ref $frame ? $frame->{tick} : $frame ) );
                     }
                     return 0;

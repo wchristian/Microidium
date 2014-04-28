@@ -29,7 +29,7 @@ sub listen {
             $stream->configure(
                 on_read => sub {
                     my ( $stream, $buffref, $eof ) = @_;
-                    if ( my $frame = $self->extract_frame( $buffref ) ) {
+                    while ( my $frame = $self->extract_frame( $buffref ) ) {
                         print "$frame\n";
                         $stream->write( $self->create_frame( $frame ) );
                     }
