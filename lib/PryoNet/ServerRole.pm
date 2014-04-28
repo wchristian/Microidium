@@ -2,7 +2,6 @@ package PryoNet::ServerRole;
 
 # VERSION
 
-use Sereal qw( encode_sereal decode_sereal );
 use IO::Async::Loop;
 
 {    # preload these to avoid frame drops
@@ -24,16 +23,15 @@ sub listen {
         socktype  => "stream",
         on_stream => sub {
             my ( $stream ) = @_;
-            my $socket     = $stream->read_handle;                          # $socket is just an IO::Socket reference
+            my $socket     = $stream->read_handle;
             my $peeraddr   = $socket->peerhost . ":" . $socket->peerport;
             print "$peeraddr joins\n";
             $stream->configure(
                 on_read => sub {
                     my ( $stream, $buffref, $eof ) = @_;
-                    while ( $$buffref =~ s/^(.*)\n// ) {                    # eat a line from the stream input
-                        my $got = decode_sereal( $1 );
-                        print "$got\n";
-                        $stream->write( encode_sereal( $got ) . "\n" );
+                    if ( my $frame = $self->extract_frame( $buffref ) ) {
+                        print "$frame\n";
+                        $stream->write( $self->create_frame( $frame ) );
                     }
                     return 0;
                 },
@@ -42,6 +40,7 @@ sub listen {
                     @{ $self->clients } = grep { $_ != $stream } @{ $self->clients };
                     print "$peeraddr leaves\n";
                 },
+                autoflush => 1,
             );
             $self->loop->add( $stream );
             push @{ $self->clients }, $stream;
@@ -55,8 +54,8 @@ sub listen {
 
 sub write {
     my ( $self, $msg ) = @_;
-    my $send = encode_sereal( $msg );
-    $_->write( "$send\n" ) for @{ $self->clients };
+    my $frame = $self->create_frame( $msg );
+    $_->write( $frame ) for @{ $self->clients };
     return;
 }
 
