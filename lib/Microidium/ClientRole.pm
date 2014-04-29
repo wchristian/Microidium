@@ -25,6 +25,7 @@ has player_sprites => (
 has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => dfile "bullet.png" ) } );
 has pryo => ( is => 'lazy', builder => 1 );
 has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
+has last_network_state => ( is => 'rw' );
 
 1;
 
@@ -47,30 +48,30 @@ sub on_keydown {
     my ( $self, $event ) = @_;
     $self->game_state->{last_input} = time;
     my $sym = $event->key_sym;
-    if ( my $tcp = $self->pryo->tcp ) {
-        $self->log( "sent: DOWN $sym" );
-        $self->pryo->write( "DOWN $sym" );
-    }
     $self->stop if $sym == SDLK_q;
     $self->client_state->{thrust}     = 1 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 1 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 1 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 1 if $sym == SDLK_d;
+    if ( my $tcp = $self->pryo->tcp ) {
+        $self->log( "sent: DOWN $sym" );
+        $self->pryo->write( $self->client_state );
+    }
     return;
 }
 
 sub on_keyup {
     my ( $self, $event ) = @_;
     my $sym = $event->key_sym;
-    if ( my $tcp = $self->pryo->tcp ) {
-        $self->log( "sent: UP $sym" );
-        $self->pryo->write( "UP $sym" );
-    }
     $self->client_state->{thrust}     = 0 if $sym == SDLK_UP;
     $self->client_state->{turn_left}  = 0 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 0 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 0 if $sym == SDLK_d;
     $self->pryo->connect( "127.0.0.1", 19366 ) if $sym == SDLK_n;
+    if ( my $tcp = $self->pryo->tcp ) {
+        $self->log( "sent: UP $sym" );
+        $self->pryo->write( $self->client_state );
+    }
     return;
 }
 
@@ -136,7 +137,7 @@ sub render_world {
 sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player = $game_state->{player} ? $game_state->{actors}{ $game_state->{player} } : undef;
-    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q" );
+    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q - Connect to server: n" );
     $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "HP: $player->{hp}" ) if $player;
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],

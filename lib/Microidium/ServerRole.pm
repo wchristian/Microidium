@@ -11,6 +11,7 @@ use Moo::Role;
 
 has game_state => ( is => 'rw',   builder => 1 );
 has pryo       => ( is => 'lazy', builder => 1 );
+has client_state => ( is => 'rw' );
 
 sub _build_pryo { PryoNet::Server->new( client => shift ) }
 
@@ -37,6 +38,12 @@ sub run {
     $pryo->loop->add( $timer );
     $pryo->loop->run;
     return;
+}
+
+sub player_control {
+    my ( $self, $actor ) = @_;
+    return $self->client_state if $self->client_state;
+    return $self->computer_ai( $actor, $self->game_state );
 }
 
 1;

@@ -25,6 +25,11 @@ sub _build_game_state {
 
 sub update_game_state {
     my ( $self, $new_game_state ) = @_;
+    if ( eval { $self->pryo->tcp } and $self->last_network_state ) {
+        %{$new_game_state} = %{ $self->last_network_state };
+        $self->last_network_state( 0 );
+        return;
+    }
     $new_game_state->{tick}++;
 
     $self->pryo->loop->loop_once( 0 );

@@ -31,7 +31,10 @@ sub connect {
                 on_read => sub {
                     my ( $stream, $buffref, $eof ) = @_;
                     while ( my $frame = $self->extract_frame( $buffref ) ) {
-                        $client->log( "got: " . ( ref $frame ? $frame->{tick} : $frame ) );
+                        $client->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
+                        if ( ref $frame and $frame->{tick} ) {
+                            $client->last_network_state( $frame );
+                        }
                     }
                     return 0;
                 },

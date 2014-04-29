@@ -14,6 +14,7 @@ use Moo::Role;
 
 has loop    => ( is => 'ro', default => sub { IO::Async::Loop->new } );
 has clients => ( is => 'ro', default => sub { [] } );
+has client  => ( is => 'ro' );
 
 sub listen {
     my ( $self, $tcp_port ) = @_;
@@ -32,6 +33,7 @@ sub listen {
                     while ( my $frame = $self->extract_frame( $buffref ) ) {
                         print "$frame\n";
                         $stream->write( $self->create_frame( $frame ) );
+                        $self->client->client_state( $frame );
                     }
                     return 0;
                 },
