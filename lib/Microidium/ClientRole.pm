@@ -28,7 +28,9 @@ has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => 
 has pryo => ( is => 'lazy', builder => 1 );
 has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
 has last_network_state => ( is => 'rw' );
-around 'update_game_state' => \&try_game_state_from_network;
+around update_game_state => \&try_game_state_from_network;
+has last_player_hit      => ( is => 'rw', default => sub { 0 } );
+after update_game_state  => \&update_last_player_hit;
 
 1;
 
@@ -63,6 +65,17 @@ sub try_game_state_from_network {
     $self->pryo->loop->loop_once( 0 );
     return $orig->( $self, $new_game_state, @args ) if !eval { $self->pryo->tcp };
     %{$new_game_state} = %{ $self->last_network_state };
+    return;
+}
+
+sub update_last_player_hit {
+    my ( $self, $new_game_state ) = @_;
+    my $old_game_state = $self->game_state;
+    my $old_player_id  = $old_game_state->{player};
+    return if !$old_player_id;
+    my $old_player = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
+    my $new_player = $new_game_state->{actors}{$old_player_id};
+    $self->last_player_hit( time ) if $old_player and $new_player and $old_player->{hp} > $new_player->{hp};
     return;
 }
 
@@ -132,7 +145,8 @@ sub render_world {
         $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
     }
 
-    my $stall_color = $game_state->{player_was_hit} ? 0xff_ff_ff_88 : 0xff_ff_ff_44;
+    my $highlight = ( $self->last_player_hit > time - 2 );
+    my $stall_color = $highlight ? 0xff_ff_ff_88 : 0xff_ff_ff_44;
     $world->draw_line(
         [ ( $world->w * $_ - $cam->{x} ) % $world->w, 0, ],
         [ ( $world->w * $_ - $cam->{x} ) % $world->w, $world->h ],

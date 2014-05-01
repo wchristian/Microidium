@@ -18,7 +18,6 @@ sub _build_game_state {
         player         => undef,
         actors         => {},
         last_actor_id  => 0,
-        player_was_hit => 0,
         ceiling        => -1800,
         floor          => 0,
         gravity        => 0.15,
@@ -40,12 +39,6 @@ sub update_game_state {
     my $old_player     = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
     $new_game_state->{player} = undef if !$old_player;
     if ( $old_player ) {
-        my $new_player = $new_game_state->{actors}{$old_player_id};
-
-        $new_game_state->{player_was_hit} = 0 if $new_game_state->{tick} - $new_game_state->{player_was_hit} > 5;
-        $new_game_state->{player_was_hit} = $new_game_state->{tick}
-          if $new_player->{hp} and $old_player->{hp} > $new_player->{hp};
-
         $self->plan_actor_addition(
             $new_game_state,
             {
