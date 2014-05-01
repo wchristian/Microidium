@@ -66,6 +66,12 @@ sub try_game_state_from_network {
     return;
 }
 
+sub player_control {
+    my ( $self, $actor ) = @_;
+    return $self->client_state if time - $self->game_state->{last_input} <= 10;
+    return $self->computer_ai( $actor, $self->game_state );
+}
+
 sub on_quit { shift->stop }
 
 sub on_keydown {

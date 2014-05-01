@@ -114,12 +114,6 @@ sub new_actor_id {
     return ++$state->{last_actor_id};
 }
 
-sub player_control {
-    my ( $self, $actor ) = @_;
-    return $self->client_state if time - $self->game_state->{last_input} <= 10;
-    return $self->computer_ai( $actor, $self->game_state );
-}
-
 sub computer_ai {
     my ( $self, $actor ) = @_;
     delete $actor->{enemy} if $actor->{enemy} and !$self->game_state->{actors}{ $actor->{enemy} };
