@@ -4,6 +4,8 @@ package PryoNet::Client;
 
 use Moo;
 
+with "PryoNet::ConnectionRole";
+with "PryoNet::ListenersRole";
 with 'PryoNet::ClientRole';
 with 'PryoNet::SerializationRole';
 

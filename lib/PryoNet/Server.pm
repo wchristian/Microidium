@@ -5,6 +5,7 @@ package PryoNet::Server;
 use Moo;
 
 with 'PryoNet::ServerRole';
+with "PryoNet::ListenersRole";
 with 'PryoNet::SerializationRole';
 
 1;

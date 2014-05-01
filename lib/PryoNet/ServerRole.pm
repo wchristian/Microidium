@@ -14,7 +14,6 @@ use PryoNet::Connection;
 
 use Moo::Role;
 
-has listeners => ( is => 'ro', default => sub { { received => [] } } );
 has loop => ( is => 'ro', default => sub { IO::Async::Loop->new } );
 has connections => ( is => 'ro', default => sub { [] } );
 
@@ -47,22 +46,6 @@ sub on_accept {
     );
     $self->loop->add( $stream );
     push @{ $self->connections }, $connection;
-    return;
-}
-
-sub on_read {
-    my ( $self, $connection, $stream, $buffref, $eof ) = @_;
-    while ( my $frame = $self->extract_frame( $buffref ) ) {
-        for my $listener ( @{ $self->listeners->{received} } ) {
-            $listener->( $connection, $frame );
-        }
-    }
-    return 0;
-}
-
-sub add_listener {
-    my ( $self, $type, $listener ) = @_;
-    push @{ $self->listeners->{$type} }, $listener;
     return;
 }
 

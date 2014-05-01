@@ -22,28 +22,10 @@ sub connect {
     my $client = $self->client;
 
     $self->loop->connect(
-        host      => $host,
-        service   => $tcp_port,
-        socktype  => "stream",
-        on_stream => sub {
-            my ( $stream ) = @_;
-            $stream->configure(
-                on_read => sub {
-                    my ( $stream, $buffref, $eof ) = @_;
-                    while ( my $frame = $self->extract_frame( $buffref ) ) {
-                        $client->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
-                        if ( ref $frame and $frame->{tick} ) {
-                            $client->last_network_state( $frame );
-                        }
-                    }
-                    return 0;
-                },
-                autoflush => 1,
-            );
-            $self->loop->add( $stream );
-            $self->tcp( $stream );
-            return;
-        },
+        host             => $host,
+        service          => $tcp_port,
+        socktype         => "stream",
+        on_stream        => $self->curry::on_accept,
         on_resolve_error => sub { die "Cannot resolve - $_[0]"; },
         on_connect_error => sub { die "Cannot connect"; },
     );
@@ -51,9 +33,14 @@ sub connect {
     return;
 }
 
-sub write {
-    my ( $self, $msg ) = @_;
-    $self->tcp->write( $self->create_frame( $msg ) );
+sub on_accept {
+    my ( $self, $stream ) = @_;
+    $stream->configure(
+        on_read   => $self->curry::on_read( $self ),
+        autoflush => 1,
+    );
+    $self->loop->add( $stream );
+    $self->tcp( $stream );
     return;
 }
 

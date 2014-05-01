@@ -29,7 +29,20 @@ has last_network_state => ( is => 'rw' );
 
 1;
 
-sub _build_pryo { PryoNet::Client->new( client => shift ) }
+sub _build_pryo {
+    my ( $self ) = @_;
+    my $pryo = PryoNet::Client->new( client => shift );
+    $pryo->add_listener(
+        received => sub {
+            my ( $connection, $frame ) = @_;
+            $self->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
+            if ( ref $frame and $frame->{tick} ) {
+                $self->last_network_state( $frame );
+            }
+        }
+    );
+    return $pryo;
+}
 
 sub _build_client_state {
     {
@@ -55,7 +68,7 @@ sub on_keydown {
     $self->client_state->{fire}       = 1 if $sym == SDLK_d;
     if ( my $tcp = $self->pryo->tcp ) {
         $self->log( "sent: DOWN $sym" );
-        $self->pryo->write( $self->client_state );
+        $self->pryo->send_tcp( $self->client_state );
     }
     return;
 }
@@ -70,7 +83,7 @@ sub on_keyup {
     $self->pryo->connect( "127.0.0.1", 19366 ) if $sym == SDLK_n;
     if ( my $tcp = $self->pryo->tcp ) {
         $self->log( "sent: UP $sym" );
-        $self->pryo->write( $self->client_state );
+        $self->pryo->send_tcp( $self->client_state );
     }
     return;
 }
