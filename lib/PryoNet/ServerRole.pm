@@ -9,55 +9,66 @@ use IO::Async::Loop;
     use IO::Async::Internals::Connector;
     use IO::Async::Future;
 }
+use curry;
+use PryoNet::Connection;
 
 use Moo::Role;
 
-has loop    => ( is => 'ro', default => sub { IO::Async::Loop->new } );
-has clients => ( is => 'ro', default => sub { [] } );
-has client  => ( is => 'ro' );
+has listeners => ( is => 'ro', default => sub { { received => [] } } );
+has loop => ( is => 'ro', default => sub { IO::Async::Loop->new } );
+has connections => ( is => 'ro', default => sub { [] } );
 
-sub listen {
+sub bind {
     my ( $self, $tcp_port ) = @_;
-
     $self->loop->listen(
-        service   => $tcp_port,
-        socktype  => "stream",
-        on_stream => sub {
-            my ( $stream ) = @_;
-            my $socket     = $stream->read_handle;
-            my $peeraddr   = $socket->peerhost . ":" . $socket->peerport;
-            print "$peeraddr joins\n";
-            $stream->configure(
-                on_read => sub {
-                    my ( $stream, $buffref, $eof ) = @_;
-                    while ( my $frame = $self->extract_frame( $buffref ) ) {
-                        print "$frame\n";
-                        $stream->write( $self->create_frame( $frame ) );
-                        $self->client->client_state( $frame );
-                    }
-                    return 0;
-                },
-                on_closed => sub {
-                    my ( $stream ) = @_;
-                    @{ $self->clients } = grep { $_ != $stream } @{ $self->clients };
-                    print "$peeraddr leaves\n";
-                },
-                autoflush => 1,
-            );
-            $self->loop->add( $stream );
-            push @{ $self->clients }, $stream;
-        },
+        service          => $tcp_port,
+        socktype         => "stream",
+        on_stream        => $self->curry::on_accept,
         on_resolve_error => sub { die "Cannot resolve - $_[0]"; },
         on_listen_error  => sub { die "Cannot listen"; },
     );
-
     return;
 }
 
-sub write {
+sub on_accept {
+    my ( $self, $stream ) = @_;
+    my $socket   = $stream->read_handle;
+    my $peeraddr = $socket->peerhost . ":" . $socket->peerport;
+    print "$peeraddr joins\n";
+    my $connection = PryoNet::Connection->new( tcp => $stream );
+    $stream->configure(
+        on_read   => $self->curry::on_read( $connection ),
+        on_closed => sub {
+            my ( $stream ) = @_;
+            @{ $self->connections } = grep { $_ != $stream } @{ $self->connections };
+            print "$peeraddr leaves\n";
+        },
+        autoflush => 1,
+    );
+    $self->loop->add( $stream );
+    push @{ $self->connections }, $connection;
+    return;
+}
+
+sub on_read {
+    my ( $self, $connection, $stream, $buffref, $eof ) = @_;
+    while ( my $frame = $self->extract_frame( $buffref ) ) {
+        for my $listener ( @{ $self->listeners->{received} } ) {
+            $listener->( $connection, $frame );
+        }
+    }
+    return 0;
+}
+
+sub add_listener {
+    my ( $self, $type, $listener ) = @_;
+    push @{ $self->listeners->{$type} }, $listener;
+    return;
+}
+
+sub send_to_all_tcp {
     my ( $self, $msg ) = @_;
-    my $frame = $self->create_frame( $msg );
-    $_->write( $frame ) for @{ $self->clients };
+    $_->send_tcp( $msg ) for @{ $self->connections };
     return;
 }
 

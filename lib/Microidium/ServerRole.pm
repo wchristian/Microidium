@@ -19,7 +19,16 @@ sub run {
     my ( $self ) = @_;
     my $PORT     = 19366;
     my $pryo     = $self->pryo;
-    $pryo->listen( $PORT );
+    $pryo->bind( $PORT );
+    $pryo->add_listener(
+        received => sub {
+            my ( $connection, $frame ) = @_;
+            print "$frame\n";
+            $connection->send_tcp( $frame );
+            $self->client_state( $frame );
+            return;
+        }
+    );
 
     my $tick = 0;
 
@@ -30,7 +39,8 @@ sub run {
             my $new_game_state = clone $self->game_state;
             $self->update_game_state( $new_game_state );
             $self->game_state( $new_game_state );
-            $pryo->write( $new_game_state );
+            $pryo->send_to_all_tcp( $new_game_state );
+
         },
     );
 
