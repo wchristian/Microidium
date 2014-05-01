@@ -94,12 +94,16 @@ sub render_world {
     my $cam = $self->client_state->{camera};
     @{$cam}{qw(x y)} = @{$player}{qw(x y)} if $player;
 
-    if ( ( my $ceil_height = $world->h / 2 - $cam->{y} + $game_state->{ceiling} ) >= 0 ) {
+    if ( defined $game_state->{ceiling}
+        and ( my $ceil_height = $world->h / 2 - $cam->{y} + $game_state->{ceiling} ) >= 0 )
+    {
         $world->draw_rect( [ 0, 0, $world->w, $ceil_height ], 0xff_30_30_ff );
         $world->draw_line( [ 0, $ceil_height ], [ $world->w, $ceil_height ], 0xff_ff_ff_ff, 0 );
     }
 
-    if ( ( my $floor_height = $world->h / 2 - $cam->{y} + $game_state->{floor} ) <= $world->h ) {
+    if ( defined $game_state->{floor}
+        and ( my $floor_height = $world->h / 2 - $cam->{y} + $game_state->{floor} ) <= $world->h )
+    {
         $world->draw_rect( [ 0, $floor_height, $world->w, $world->h - $floor_height ], 0xff_30_30_ff );
         $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
     }
@@ -160,7 +164,7 @@ sub render_ui {
     ) if $player;
     $self->draw_gfx_text( [ 0, $self->h - 24 ], 0xff_ff_ff_ff, $self->fps );
     $self->draw_gfx_text( [ 0, $self->h - 16 ], 0xff_ff_ff_ff, $self->frame );
-    $self->draw_gfx_text( [ 0, $self->h - 8 ],  0xff_ff_ff_ff, $game_state->{tick} );
+    $self->draw_gfx_text( [ 0, $self->h - 8 ],  0xff_ff_ff_ff, $game_state->{tick} ) if $game_state->{tick};
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
