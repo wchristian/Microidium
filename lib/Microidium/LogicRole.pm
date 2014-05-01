@@ -8,6 +8,8 @@ use Math::Vec ();
 
 use Moo::Role;
 
+has planned_new_actors => ( is => 'rw', default => sub { [] } );
+
 sub _build_game_state {
     my ( $self ) = @_;
     return {
@@ -25,26 +27,17 @@ sub _build_game_state {
 
 sub update_game_state {
     my ( $self, $new_game_state ) = @_;
+
+    $self->planned_new_actors( [] );
+
     $new_game_state->{tick}++;
 
-    my $old_game_state = $self->game_state;
-    my $old_actors     = $old_game_state->{actors};
-    my $new_actors     = $new_game_state->{actors};
-    for my $id ( keys %{$old_actors} ) {
-        my $actor      = $old_actors->{$id};
-        my $input_meth = $actor->{input};
-        my $input      = $self->$input_meth( $actor );
-        my @c          = ( $actor, $new_actors->{$id}, $new_game_state, $input );
-        $self->apply_translation_forces( @c );
-        $self->apply_rotation_forces( @c );
-        $self->apply_weapon_effects( @c );
-        $self->apply_location_damage( @c );
-        $self->apply_collision_effects( @c );
-        delete $new_actors->{$id} if $new_actors->{$id}{hp} <= 0;
-    }
+    $self->modify_actors( $new_game_state );    # new gamestate guaranteed to not have new or removed actors
+    $self->remove_actors( $new_game_state );
 
-    my $old_player_id = $old_game_state->{player};
-    my $old_player = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
+    my $old_game_state = $self->game_state;
+    my $old_player_id  = $old_game_state->{player};
+    my $old_player     = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
     $new_game_state->{player} = undef if !$old_player;
     if ( $old_player ) {
         my $new_player = $new_game_state->{actors}{$old_player_id};
@@ -53,7 +46,7 @@ sub update_game_state {
         $new_game_state->{player_was_hit} = $new_game_state->{tick}
           if $new_player->{hp} and $old_player->{hp} > $new_player->{hp};
 
-        $self->add_actor_to(
+        $self->plan_actor_addition(
             $new_game_state,
             {
                 x => $old_player->{x} + ( 1500 * rand ) - 750,
@@ -95,18 +88,54 @@ sub update_game_state {
             team         => 1,
             hp           => 12,
         );
-        $self->add_actor_to( $new_game_state, \%player );
+        $self->plan_actor_addition( $new_game_state, \%player );
         $new_game_state->{player} = $player{id};
     }
+
+    $self->add_planned_actors( $new_game_state );
 
     return;
 }
 
-sub add_actor_to {
+sub modify_actors {
+    my ( $self, $new_game_state ) = @_;
+
+    my $old_game_state = $self->game_state;
+    my $old_actors     = $old_game_state->{actors};
+    my $new_actors     = $new_game_state->{actors};
+    for my $id ( keys %{$old_actors} ) {
+        my $actor      = $old_actors->{$id};
+        my $input_meth = $actor->{input};
+        my $input      = $self->$input_meth( $actor );
+        my @c          = ( $actor, $new_actors->{$id}, $new_game_state, $input );
+        $self->apply_translation_forces( @c );
+        $self->apply_rotation_forces( @c );
+        $self->apply_weapon_effects( @c );
+        $self->apply_location_damage( @c );
+        $self->apply_collision_effects( @c );
+    }
+    return;
+}
+
+sub remove_actors {
+    my ( $self, $new_game_state ) = @_;
+    my $new_actors = $new_game_state->{actors};
+    delete $new_actors->{ $_->{id} } for grep { $_->{hp} <= 0 } values %{$new_actors};
+    return;
+}
+
+sub add_planned_actors {
+    my ( $self, $new_game_state ) = @_;
+    $new_game_state->{actors}{ $_->{id} } = $_ for @{ $self->planned_new_actors };
+    $self->planned_new_actors( [] );
+    return;
+}
+
+sub plan_actor_addition {
     my ( $self, $game_state, $actor ) = @_;
     $actor->{id} = $self->new_actor_id( $game_state );
-    $game_state->{actors}{ $actor->{id} } = $actor;
-    return;
+    push @{ $self->planned_new_actors }, $actor;
+    return $actor->{id};
 }
 
 sub new_actor_id {
@@ -228,7 +257,7 @@ sub apply_weapon_effects {
             is_bullet   => 1,
             input       => "perma_thrust",
         );
-        $self->add_actor_to( $new_game_state, \%bullet );
+        $self->plan_actor_addition( $new_game_state, \%bullet );
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
     return;
