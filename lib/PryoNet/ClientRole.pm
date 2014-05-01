@@ -12,7 +12,6 @@ use IO::Async::Loop;
 
 use Moo::Role;
 
-has loop => ( is => 'ro', default => sub { IO::Async::Loop->new } );
 has tcp => ( is => 'rw' );
 has client => ( is => 'ro', required => 1 );
 

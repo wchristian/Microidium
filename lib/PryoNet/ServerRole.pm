@@ -14,7 +14,6 @@ use PryoNet::Connection;
 
 use Moo::Role;
 
-has loop => ( is => 'ro', default => sub { IO::Async::Loop->new } );
 has connections => ( is => 'ro', default => sub { [] } );
 
 sub bind {
