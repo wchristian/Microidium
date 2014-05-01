@@ -42,13 +42,13 @@ sub update_game_state {
         $self->plan_actor_addition(
             $new_game_state,
             {
-                x => $old_player->{x} + ( 1500 * rand ) - 750,
-                y => min( 0, $old_player->{y} + ( 1500 * rand ) - 750 ),
+                x            => $old_player->{x} - 750 + rand 1500,
+                y            => min( 0, $old_player->{y} - 750 + rand 1500 ),
                 x_speed      => 0,
                 y_speed      => 0,
-                turn_speed   => ( rand() * 5 ) + 1,
+                turn_speed   => 1 + rand 5,
                 rot          => 180,
-                thrust_power => rand() + 0.2,
+                thrust_power => 0.2 + rand,
                 max_speed    => 8,
                 thrust_stall => 0.05,
                 grav_cancel  => 0.3,
@@ -148,7 +148,7 @@ sub find_enemy {
     my @possible_enemies =
       grep { !$_->{is_bullet} and $_->{team} != $actor->{team} } values %{ $self->game_state->{actors} };
     return if !@possible_enemies;
-    my $id = int( rand() * @possible_enemies );
+    my $id = int rand @possible_enemies;
     return $possible_enemies[$id]->{id};
 }
 
