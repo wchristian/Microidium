@@ -5,8 +5,8 @@ package Microidium;
 
 use Moo;
 
-with "Microidium::ClientRole";
 with "Microidium::LogicRole";
+with "Microidium::ClientRole";
 with "Microidium::SDLRole";
 
 1;

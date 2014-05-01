@@ -16,6 +16,8 @@ use PryoNet::Client;
 
 use Moo::Role;
 
+requires "update_game_state";
+
 has player_sprites => (
     is      => 'ro',
     default => sub {
@@ -26,6 +28,7 @@ has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => 
 has pryo => ( is => 'lazy', builder => 1 );
 has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
 has last_network_state => ( is => 'rw' );
+around 'update_game_state' => \&try_game_state_from_network;
 
 1;
 
@@ -55,6 +58,14 @@ sub _build_client_state {
     };
 }
 
+sub try_game_state_from_network {
+    my ( $orig, $self, $new_game_state, @args ) = @_;
+    $self->pryo->loop->loop_once( 0 );
+    return $orig->( $self, $new_game_state, @args ) if !eval { $self->pryo->tcp };
+    %{$new_game_state} = %{ $self->last_network_state };
+    return;
+}
+
 sub on_quit { shift->stop }
 
 sub on_keydown {
@@ -80,11 +91,18 @@ sub on_keyup {
     $self->client_state->{turn_left}  = 0 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 0 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 0 if $sym == SDLK_d;
-    $self->pryo->connect( "127.0.0.1", 19366 ) if $sym == SDLK_n;
+    $self->connect if $sym == SDLK_n;
     if ( my $tcp = $self->pryo->tcp ) {
         $self->log( "sent: UP $sym" );
         $self->pryo->send_tcp( $self->client_state );
     }
+    return;
+}
+
+sub connect {
+    my ( $self ) = @_;
+    $self->pryo->connect( "127.0.0.1", 19366 );
+    $self->last_network_state( {} );
     return;
 }
 

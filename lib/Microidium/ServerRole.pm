@@ -40,7 +40,6 @@ sub run {
             $self->update_game_state( $new_game_state );
             $self->game_state( $new_game_state );
             $pryo->send_to_all_tcp( $new_game_state );
-
         },
     );
 

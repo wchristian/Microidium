@@ -13,12 +13,9 @@ use IO::Async::Loop;
 use Moo::Role;
 
 has tcp => ( is => 'rw' );
-has client => ( is => 'ro', required => 1 );
 
 sub connect {
     my ( $self, $host, $tcp_port ) = @_;
-
-    my $client = $self->client;
 
     $self->loop->connect(
         host             => $host,
