@@ -9,16 +9,14 @@ has listeners => ( is => 'ro', default => sub { { received => [] } } );
 sub on_read {
     my ( $self, $connection, $stream, $buffref, $eof ) = @_;
     while ( my $frame = $self->extract_frame( $buffref ) ) {
-        for my $listener ( @{ $self->listeners->{received} } ) {
-            $listener->( $connection, $frame );
-        }
+        $_->( $connection, $frame ) for @{ $self->listeners->{received} };
     }
     return 0;
 }
 
-sub add_listener {
-    my ( $self, $type, $listener ) = @_;
-    push @{ $self->listeners->{$type} }, $listener;
+sub add_listeners {
+    my ( $self, %listeners ) = @_;
+    push @{ $self->listeners->{$_} }, $listeners{$_} for keys %listeners;
     return;
 }
 

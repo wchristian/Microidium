@@ -20,14 +20,14 @@ sub run {
     my $PORT     = 19366;
     my $pryo     = $self->pryo;
     $pryo->bind( $PORT );
-    $pryo->add_listener(
+    $pryo->add_listeners(
         received => sub {
             my ( $connection, $frame ) = @_;
             print "$frame\n";
             $connection->send_tcp( $frame );
             $self->client_state( $frame );
             return;
-        }
+        },
     );
 
     my $tick = 0;
