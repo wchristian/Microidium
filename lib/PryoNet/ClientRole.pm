@@ -31,12 +31,20 @@ sub connect {
 
 sub on_accept {
     my ( $self, $stream ) = @_;
+    $_->() for @{ $self->listeners->{connected} };
     $stream->configure(
         on_read   => $self->curry::on_read( $self ),
+        on_closed => $self->curry::on_closed,
         autoflush => 1,
     );
     $self->loop->add( $stream );
     $self->tcp( $stream );
+    return;
+}
+
+sub on_closed {
+    my ( $self ) = @_;
+    $_->() for @{ $self->listeners->{disconnected} };
     return;
 }
 
