@@ -31,6 +31,7 @@ has last_network_state => ( is => 'rw' );
 around update_game_state => \&try_game_state_from_network;
 has last_player_hit      => ( is => 'rw', default => sub { 0 } );
 after update_game_state  => \&update_last_player_hit;
+has in_network_game => ( is => 'rw' );
 
 1;
 
@@ -38,7 +39,9 @@ sub _build_pryo {
     my ( $self ) = @_;
     my $pryo = PryoNet::Client->new( client => shift );
     $pryo->add_listeners(
-        received => sub {
+        connected    => sub { $self->in_network_game( 1 ) },
+        disconnected => sub { $self->in_network_game( 0 ) },
+        received     => sub {
             my ( $connection, $frame ) = @_;
             $self->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
             if ( ref $frame and $frame->{tick} ) {
@@ -63,7 +66,7 @@ sub _build_client_state {
 sub try_game_state_from_network {
     my ( $orig, $self, $new_game_state, @args ) = @_;
     $self->pryo->loop->loop_once( 0 );
-    return $orig->( $self, $new_game_state, @args ) if !eval { $self->pryo->tcp };
+    return $orig->( $self, $new_game_state, @args ) if !$self->in_network_game;
     %{$new_game_state} = %{ $self->last_network_state };
     return;
 }
@@ -96,7 +99,7 @@ sub on_keydown {
     $self->client_state->{turn_left}  = 1 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 1 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 1 if $sym == SDLK_d;
-    if ( my $tcp = $self->pryo->tcp ) {
+    if ( $self->in_network_game ) {
         $self->log( "sent: DOWN $sym" );
         $self->pryo->send_tcp( $self->client_state );
     }
@@ -111,7 +114,7 @@ sub on_keyup {
     $self->client_state->{turn_right} = 0 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 0 if $sym == SDLK_d;
     $self->connect if $sym == SDLK_n;
-    if ( my $tcp = $self->pryo->tcp ) {
+    if ( $self->in_network_game ) {
         $self->log( "sent: UP $sym" );
         $self->pryo->send_tcp( $self->client_state );
     }
@@ -120,6 +123,7 @@ sub on_keyup {
 
 sub connect {
     my ( $self ) = @_;
+    return if $self->in_network_game;
     $self->pryo->connect( "127.0.0.1", 19366 );
     $self->last_network_state( {} );
     return;
