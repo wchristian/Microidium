@@ -13,14 +13,14 @@ has planned_new_actors => ( is => 'rw', default => sub { [] } );
 sub _build_game_state {
     my ( $self ) = @_;
     return {
-        tick           => 0,
-        last_input     => 0,
-        player         => undef,
-        actors         => {},
-        last_actor_id  => 0,
-        ceiling        => -1800,
-        floor          => 0,
-        gravity        => 0.15,
+        tick          => 0,
+        last_input    => 0,
+        players       => { 1 => { id => 1, actor => undef } },
+        actors        => {},
+        last_actor_id => 0,
+        ceiling       => -1800,
+        floor         => 0,
+        gravity       => 0.15,
     };
 }
 
@@ -34,36 +34,39 @@ sub update_game_state {
     $self->modify_actors( $new_game_state );    # new gamestate guaranteed to not have new or removed actors
     $self->remove_actors( $new_game_state );
 
-    my $old_game_state = $self->game_state;
-    my $old_player_id  = $old_game_state->{player};
-    my $old_player     = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
-    $new_game_state->{player} = undef if !$old_player;
-    if ( $old_player ) {
-        $self->plan_actor_addition(
-            $new_game_state,
-            {
-                x            => $old_player->{x} - 750 + rand 1500,
-                y            => min( 0, $old_player->{y} - 750 + rand 1500 ),
-                x_speed      => 0,
-                y_speed      => 0,
-                turn_speed   => 1 + rand 5,
-                rot          => 180,
-                thrust_power => 0.2 + rand,
-                max_speed    => 8,
-                thrust_stall => 0.05,
-                grav_cancel  => 0.3,
-                gun_heat     => 0,
-                gun_cooldown => 1,
-                gun_use_heat => 60,
-                input        => "computer_ai",
-                team         => ( rand > 0.5 ) ? 2 : 3,
-                hp           => 1,
-            }
-        ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
-    }
+    my $old_game_state            = $self->game_state;
+    my $old_players               = $old_game_state->{players};
+    my ( $first_old_player )      = values %{$old_players};
+    my $first_old_player_actor_id = $first_old_player->{actor};
+    my $first_old_player_actor =
+      $first_old_player_actor_id ? $old_game_state->{actors}{$first_old_player_actor_id} : undef;
+    my @bot_start = $first_old_player_actor ? ( $first_old_player_actor->{x}, $first_old_player_actor->{y} ) : ( 0, 0 );
+    $self->plan_actor_addition(
+        $new_game_state,
+        {
+            x            => $bot_start[0] - 750 + rand 1500,
+            y            => min( 0, $bot_start[1] - 750 + rand 1500 ),
+            x_speed      => 0,
+            y_speed      => 0,
+            turn_speed   => 1 + rand 5,
+            rot          => 180,
+            thrust_power => 0.2 + rand,
+            max_speed    => 8,
+            thrust_stall => 0.05,
+            grav_cancel  => 0.3,
+            gun_heat     => 0,
+            gun_cooldown => 1,
+            gun_use_heat => 60,
+            input        => "computer_ai",
+            team         => ( rand > 0.5 ) ? 2 : 3,
+            hp           => 1,
+        }
+    ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
 
-    if ( !$old_game_state->{player} ) {
-        my %player = (
+    for my $player ( values %{$old_players} ) {
+        my $actor_id = $player->{actor};
+        next if $actor_id and $old_game_state->{actors}{$actor_id};
+        my %actor = (
             x            => 0,
             y            => 0,
             x_speed      => 0,
@@ -81,8 +84,7 @@ sub update_game_state {
             team         => 1,
             hp           => 12,
         );
-        $self->plan_actor_addition( $new_game_state, \%player );
-        $new_game_state->{player} = $player{id};
+        $new_game_state->{players}{ $player->{id} }{actor} = $self->plan_actor_addition( $new_game_state, \%actor );
     }
 
     $self->add_planned_actors( $new_game_state );
