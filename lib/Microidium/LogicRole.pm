@@ -33,14 +33,25 @@ sub update_game_state {
 
     $self->modify_actors( $new_game_state );    # new gamestate guaranteed to not have new or removed actors
     $self->remove_actors( $new_game_state );
+    $self->plan_bot_respawns( $new_game_state );
+    $self->plan_player_respawns( $new_game_state );
+    $self->add_planned_actors( $new_game_state );
 
-    my $old_game_state            = $self->game_state;
-    my $old_players               = $old_game_state->{players};
-    my ( $first_old_player )      = values %{$old_players};
-    my $first_old_player_actor_id = $first_old_player->{actor};
-    my $first_old_player_actor =
-      $first_old_player_actor_id ? $old_game_state->{actors}{$first_old_player_actor_id} : undef;
-    my @bot_start = $first_old_player_actor ? ( $first_old_player_actor->{x}, $first_old_player_actor->{y} ) : ( 0, 0 );
+    return;
+}
+
+sub plan_bot_respawns {
+    my ( $self, $new_game_state ) = @_;
+
+    my @bot_start = do {
+        my $old_game_state       = $self->game_state;
+        my $old_players          = $old_game_state->{players};
+        my ( $first_old_player ) = values %{$old_players};
+        my $actor_id             = $first_old_player->{actor};
+        my $actor                = $actor_id ? $old_game_state->{actors}{$actor_id} : undef;
+        $actor ? ( $actor->{x}, $actor->{y} ) : ( 0, 0 );
+    };
+
     $self->plan_actor_addition(
         $new_game_state,
         {
@@ -62,6 +73,15 @@ sub update_game_state {
             hp           => 1,
         }
     ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
+
+    return;
+}
+
+sub plan_player_respawns {
+    my ( $self, $new_game_state ) = @_;
+
+    my $old_game_state = $self->game_state;
+    my $old_players    = $old_game_state->{players};
 
     for my $player ( values %{$old_players} ) {
         my $actor_id = $player->{actor};
@@ -86,8 +106,6 @@ sub update_game_state {
         );
         $new_game_state->{players}{ $player->{id} }{actor} = $self->plan_actor_addition( $new_game_state, \%actor );
     }
-
-    $self->add_planned_actors( $new_game_state );
 
     return;
 }
