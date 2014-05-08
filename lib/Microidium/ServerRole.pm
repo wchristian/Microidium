@@ -11,7 +11,6 @@ use Moo::Role;
 
 has game_state => ( is => 'rw',   builder => 1 );
 has pryo       => ( is => 'lazy', builder => 1 );
-has client_state => ( is => 'rw' );
 
 sub _build_pryo { PryoNet::Server->new( client => shift ) }
 
@@ -21,11 +20,26 @@ sub run {
     my $pryo     = $self->pryo;
     $pryo->bind( $PORT );
     $pryo->add_listeners(
+        connected => sub {
+            my ( $connection ) = @_;
+            my $players = $self->game_state->{players};
+            $players->{ $connection->id } = { id => $connection->id, actor => undef, client_state => undef };
+            printf "player connected %s ( %s total )\n", $connection->id, scalar values %{$players};
+            $connection->send_tcp( { network_player_id => $connection->id } );
+            return;
+        },
+        disconnected => sub {
+            my ( $connection ) = @_;
+            my $players = $self->game_state->{players};
+            delete $players->{ $connection->id };
+            printf "player disconnected %s ( %s total )\n", $connection->id, scalar values %{$players};
+            return;
+        },
         received => sub {
             my ( $connection, $frame ) = @_;
-            print "$frame\n";
-            $connection->send_tcp( $frame );
-            $self->client_state( $frame );
+            my $player = $self->game_state->{players}{ $connection->id };
+            return if !$player;
+            $player->{client_state} = $frame;
             return;
         },
     );
@@ -51,7 +65,9 @@ sub run {
 
 sub player_control {
     my ( $self, $actor ) = @_;
-    return $self->client_state if $self->client_state;
+    my $player = $self->game_state->{players}{ $actor->{player_id} };
+    my $player_state = $player ? $player->{client_state} : undef;
+    return $player_state if $player_state;
     return $self->computer_ai( $actor, $self->game_state );
 }
 

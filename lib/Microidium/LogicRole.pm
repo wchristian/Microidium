@@ -15,7 +15,7 @@ sub _build_game_state {
     return {
         tick          => 0,
         last_input    => 0,
-        players       => { 1 => { id => 1, actor => undef } },
+        players       => {},
         actors        => {},
         last_actor_id => 0,
         ceiling       => -1800,
@@ -103,6 +103,7 @@ sub plan_player_respawns {
             input        => "player_control",
             team         => 1,
             hp           => 12,
+            player_id    => $player->{id},
         );
         $new_game_state->{players}{ $player->{id} }{actor} = $self->plan_actor_addition( $new_game_state, \%actor );
     }

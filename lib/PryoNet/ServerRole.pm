@@ -14,7 +14,8 @@ use PryoNet::Connection;
 
 use Moo::Role;
 
-has connections => ( is => 'ro', default => sub { [] } );
+has connections        => ( is => 'ro', default => sub { [] } );
+has last_connection_id => ( is => 'rw', default => sub { 0 } );
 
 sub bind {
     my ( $self, $tcp_port ) = @_;
@@ -30,21 +31,20 @@ sub bind {
 
 sub on_accept {
     my ( $self, $stream ) = @_;
-    my $socket   = $stream->read_handle;
-    my $peeraddr = $socket->peerhost . ":" . $socket->peerport;
-    print "$peeraddr joins\n";
-    my $connection = PryoNet::Connection->new( tcp => $stream );
+    my $connection = PryoNet::Connection->new( tcp => $stream, id => $self->next_connection_id );
     $stream->configure(
         on_read   => $self->curry::on_read( $connection ),
         on_closed => sub {
             my ( $stream ) = @_;
-            @{ $self->connections } = grep { $_ != $stream } @{ $self->connections };
-            print "$peeraddr leaves\n";
+            @{ $self->connections } = grep { $_ != $connection } @{ $self->connections };
+            $_->( $connection ) for @{ $self->listeners->{disconnected} };
+            return;
         },
         autoflush => 1,
     );
     $self->loop->add( $stream );
     push @{ $self->connections }, $connection;
+    $_->( $connection ) for @{ $self->listeners->{connected} };
     return;
 }
 
@@ -53,5 +53,7 @@ sub send_to_all_tcp {
     $_->send_tcp( $msg ) for @{ $self->connections };
     return;
 }
+
+sub next_connection_id { ++shift->{last_connection_id} }
 
 1;

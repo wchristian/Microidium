@@ -31,8 +31,9 @@ has last_network_state => ( is => 'rw' );
 around update_game_state => \&client_update_game_state;
 has last_player_hit      => ( is => 'rw', default => sub { 0 } );
 after update_game_state  => \&update_last_player_hit;
-has in_network_game => ( is => 'rw' );
-has local_player_id => ( is => 'rw' );
+has in_network_game   => ( is => 'rw' );
+has local_player_id   => ( is => 'rw' );
+has network_player_id => ( is => 'rw' );
 
 1;
 
@@ -41,13 +42,21 @@ sub _build_pryo {
     my $pryo = PryoNet::Client->new( client => shift );
     $pryo->add_listeners(
         connected    => sub { $self->in_network_game( 1 ) },
-        disconnected => sub { $self->in_network_game( 0 ) },
-        received     => sub {
+        disconnected => sub {
+            $self->in_network_game( 0 );
+            $self->network_player_id( 0 );
+        },
+        received => sub {
             my ( $connection, $frame ) = @_;
             $self->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
             if ( ref $frame and $frame->{tick} ) {
                 $self->last_network_state( $frame );
             }
+            elsif ( ref $frame and $frame->{network_player_id} ) {
+                $self->log( "got network id: $frame->{network_player_id}" );
+                $self->network_player_id( $frame->{network_player_id} );
+            }
+            return;
         },
     );
     return $pryo;
@@ -229,9 +238,15 @@ sub render_ui {
     return;
 }
 
+sub player_id {
+    my ( $self ) = @_;
+    return $self->in_network_game ? $self->network_player_id : $self->local_player_id;
+}
+
 sub local_player {
     my ( $self ) = @_;
-    return $self->local_player_id ? $self->game_state->{players}{ $self->local_player_id } : undef;
+    my $player_id = $self->player_id;
+    return $player_id ? $self->game_state->{players}{$player_id} : undef;
 }
 
 sub local_player_actor {
