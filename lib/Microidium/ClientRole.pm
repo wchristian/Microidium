@@ -28,7 +28,7 @@ has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => 
 has pryo => ( is => 'lazy', builder => 1 );
 has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
 has last_network_state => ( is => 'rw' );
-around update_game_state => \&try_game_state_from_network;
+around update_game_state => \&client_update_game_state;
 has last_player_hit      => ( is => 'rw', default => sub { 0 } );
 after update_game_state  => \&update_last_player_hit;
 has in_network_game => ( is => 'rw' );
@@ -63,12 +63,22 @@ sub _build_client_state {
     };
 }
 
-sub try_game_state_from_network {
-    my ( $orig, $self, $new_game_state, @args ) = @_;
+sub client_update_game_state {
+    my ( $orig, $self, @args ) = @_;
     $self->pryo->loop->loop_once( 0 );
-    return $orig->( $self, $new_game_state, @args ) if !$self->in_network_game;
+    return $self->network_update_game_state( @args ) if $self->in_network_game;
+    return $self->local_update_game_state( $orig, @args );
+}
+
+sub network_update_game_state {
+    my ( $self, $new_game_state ) = @_;
     %{$new_game_state} = %{ $self->last_network_state };
     return;
+}
+
+sub local_update_game_state {
+    my ( $self, $orig, $new_game_state, @args ) = @_;
+    return $self->$orig( $new_game_state, @args );
 }
 
 sub update_last_player_hit {
