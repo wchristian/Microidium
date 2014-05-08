@@ -32,6 +32,7 @@ around update_game_state => \&client_update_game_state;
 has last_player_hit      => ( is => 'rw', default => sub { 0 } );
 after update_game_state  => \&update_last_player_hit;
 has in_network_game => ( is => 'rw' );
+has local_player_id => ( is => 'rw' );
 
 1;
 
@@ -78,6 +79,10 @@ sub network_update_game_state {
 
 sub local_update_game_state {
     my ( $self, $orig, $new_game_state, @args ) = @_;
+    if ( !$self->local_player_id ) {
+        $new_game_state->{players}{1} = { id => 1, actor => undef };
+        $self->local_player_id( 1 );
+    }
     return $self->$orig( $new_game_state, @args );
 }
 
@@ -141,9 +146,8 @@ sub connect {
 
 sub render_world {
     my ( $self, $world, $game_state ) = @_;
-    my $player_actor =
-      $game_state->{players}{1}{actor} ? $game_state->{actors}{ $game_state->{players}{1}{actor} } : undef;
-    my $cam = $self->client_state->{camera};
+    my $player_actor = $self->local_player_actor;
+    my $cam          = $self->client_state->{camera};
     @{$cam}{qw(x y)} = @{$player_actor}{qw(x y)} if $player_actor;
 
     if ( defined $game_state->{ceiling}
@@ -205,8 +209,7 @@ sub render_world {
 
 sub render_ui {
     my ( $self, $game_state ) = @_;
-    my $player_actor =
-      $game_state->{players}{1}{actor} ? $game_state->{actors}{ $game_state->{players}{1}{actor} } : undef;
+    my $player_actor = $self->local_player_actor;
     $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q - Connect to server: n" );
     $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "HP: $player_actor->{hp}" ) if $player_actor;
     $self->draw_gfx_text(
@@ -224,6 +227,17 @@ sub render_ui {
     $self->draw_gfx_text( [ 0, 8 + $_ * 8 ], 0xff_ff_ff_ff, $to_display[$_] ) for 0 .. $#to_display;
 
     return;
+}
+
+sub local_player {
+    my ( $self ) = @_;
+    return $self->local_player_id ? $self->game_state->{players}{ $self->local_player_id } : undef;
+}
+
+sub local_player_actor {
+    my ( $self ) = @_;
+    my $player = $self->local_player;
+    return $player && $player->{actor} ? $self->game_state->{actors}{ $player->{actor} } : undef;
 }
 
 sub log { push @{ shift->console }, @_ }
