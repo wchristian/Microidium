@@ -2,9 +2,13 @@ package Microidium::SDLRole;
 
 # VERSION
 
-use SDL            ();
-use SDLx::App      ();
-use SDL::Constants ();
+use SDL                  ();
+use SDLx::App            ();
+use SDL::Constants       ();
+use SDL::Mixer::Samples  ();
+use SDL::Mixer::Channels ();
+use SDL::Mixer::Effects  ();
+use SDL::Mixer;
 use SDL::GFX::Rotozoom 'SMOOTHING_OFF';
 use Time::HiRes 'time';
 use curry;
@@ -27,6 +31,11 @@ has world_display  => ( is => 'rw', builder => 1 );
 
 sub _build_app {
     my ( $self ) = @_;
+
+    printf "Error initializing SDL_mixer: %s\n", SDL::get_error
+      if SDL::Mixer::open_audio 44100, AUDIO_S16, 2, 1024;
+    SDL::Mixer::Channels::allocate_channels 32;
+
     return SDLx::App->new(
         event_handlers => [ $self->curry::on_event ],
         move_handlers  => [ $self->curry::on_move ],

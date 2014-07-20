@@ -18,6 +18,13 @@ use Moo::Role;
 
 requires "update_game_state";
 
+has sounds => (
+    is      => 'lazy',
+    builder => sub {
+        my %sounds = map { $_ => SDL::Mixer::Samples::load_WAV( dfile "$_.wav" ) } qw( shot death );
+        return \%sounds;
+    }
+);
 has player_sprites => (
     is      => 'ro',
     default => sub {
@@ -189,7 +196,8 @@ sub render_world {
 
     my $sprites       = $self->player_sprites;
     my $bullet_sprite = $self->bullet_sprite;
-    for my $flier ( values %{ $game_state->{actors} } ) {
+    my %actors        = %{ $game_state->{actors} };
+    for my $flier ( values %actors ) {
         my $sprite = $sprites->{ $flier->{team} };
         if ( $flier->{is_bullet} ) {
             $bullet_sprite->x( $flier->{x} - $cam->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
@@ -213,6 +221,28 @@ sub render_world {
         }
     }
 
+    my @new_bullets = grep $_->{is_bullet}, map $actors{$_}, @{ $game_state->{new_actors} };
+    $self->play_sound( "shot", $_, $cam, 3 ) for @new_bullets;
+
+    my @dead_planes = grep !$_->{is_bullet}, @{ $game_state->{removed_actors} };
+    $self->play_sound( "death", $_, $cam, 3 ) for @dead_planes;
+
+    return;
+}
+
+sub play_sound {
+    my ( $self, $sound_id, $flier, $cam, $falloff ) = @_;
+
+    my $x_diff = $flier->{x} - $cam->{x};
+    my $distance = ( ( ( $x_diff )**2 ) + ( ( $flier->{y} - $cam->{y} )**2 ) )**0.5;
+    $distance /= $falloff;
+    return if $distance > 255;
+
+    my $angle = $x_diff / $falloff;
+    $angle = $angle >= 0 ? ( min $angle, 90 ) : ( 360 + max $angle, -90 );
+
+    my $channel = SDL::Mixer::Channels::play_channel( -1, $self->sounds->{$sound_id}, 0 );
+    SDL::Mixer::Effects::set_position( $channel, $angle, $distance );
     return;
 }
 
@@ -220,6 +250,11 @@ sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
     $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q - Connect to server: n" );
+    $self->draw_gfx_text(
+        [ 0, $self->h - 48 ],
+        0xff_ff_ff_ff, sprintf "Audio channels:|%s|",
+        join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31
+    );
     $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "HP: $player_actor->{hp}" ) if $player_actor;
     $self->draw_gfx_text(
         [ 0, $self->h - 32 ],
