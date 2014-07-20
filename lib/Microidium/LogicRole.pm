@@ -29,6 +29,8 @@ sub update_game_state {
 
     $self->planned_new_actors( [] );
 
+    $new_game_state->{new_actors}     = [];
+    $new_game_state->{removed_actors} = [];
     $new_game_state->{tick}++;
 
     $self->modify_actors( $new_game_state );    # new gamestate guaranteed to not have new or removed actors
@@ -134,13 +136,15 @@ sub modify_actors {
 sub remove_actors {
     my ( $self, $new_game_state ) = @_;
     my $new_actors = $new_game_state->{actors};
-    delete $new_actors->{ $_->{id} } for grep { $_->{hp} <= 0 } values %{$new_actors};
+    push @{ $new_game_state->{removed_actors} }, delete $new_actors->{ $_->{id} }
+      for grep { $_->{hp} <= 0 } values %{$new_actors};
     return;
 }
 
 sub add_planned_actors {
     my ( $self, $new_game_state ) = @_;
     $new_game_state->{actors}{ $_->{id} } = $_ for @{ $self->planned_new_actors };
+    $new_game_state->{new_actors} = [ map $_->{id}, @{ $self->planned_new_actors } ];
     $self->planned_new_actors( [] );
     return;
 }
