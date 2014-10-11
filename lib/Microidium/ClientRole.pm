@@ -89,7 +89,9 @@ sub client_update_game_state {
 
 sub network_update_game_state {
     my ( $self, $new_game_state ) = @_;
+    return if !$self->last_network_state;
     %{$new_game_state} = %{ $self->last_network_state };
+    $self->last_network_state( undef );
     return;
 }
 
@@ -156,7 +158,6 @@ sub connect {
     my ( $self ) = @_;
     return if $self->in_network_game;
     $self->pryo->connect( "127.0.0.1", 19366 );
-    $self->last_network_state( {} );
     return;
 }
 
