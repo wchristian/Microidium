@@ -8,6 +8,12 @@ Microidium - an asteroid-like game
 
 version 0.000001
 
+=head1
+
+=for HTML <p><img src="https://dl.dropboxusercontent.com/u/10190786/microidium.png" /></p>
+
+Sounds made with http://www.bfxr.net/
+
 =for :stopwords cpan testmatrix url annocpan anno bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
 
 =head1 SUPPORT
