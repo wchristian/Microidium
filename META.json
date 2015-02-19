@@ -57,7 +57,6 @@
             "Moo::Role" : "0",
             "SDL" : "0",
             "SDL::Constants" : "0",
-            "SDL::GFX::Rotozoom" : "0",
             "SDL::Mixer" : "0",
             "SDL::Mixer::Channels" : "0",
             "SDL::Mixer::Effects" : "0",

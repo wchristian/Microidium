@@ -5,14 +5,12 @@ package Microidium::ClientRole;
 use lib '..';
 use 5.010;
 use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n );
-use Math::Trig qw' deg2rad rad2deg ';
-use SDLx::Sprite;
-use Math::Vec qw(NewVec);
-use List::Util qw( first min max );
+use List::Util qw( min max );
 use Carp::Always;
-use curry;
 use Microidium::Helpers 'dfile';
 use PryoNet::Client;
+use Acme::Math::XS 'mix';
+use Math::Trig qw' deg2rad ';
 
 use Moo::Role;
 
@@ -25,13 +23,6 @@ has sounds => (
         return \%sounds;
     }
 );
-has player_sprites => (
-    is      => 'ro',
-    default => sub {
-        return { map { $_ => SDLx::Sprite->new( image => dfile "player$_.png" ) } 1 .. 3, };
-    }
-);
-has bullet_sprite => ( is => 'ro', default => sub { SDLx::Sprite->new( image => dfile "bullet.png" ) } );
 has pryo => ( is => 'lazy', builder => 1 );
 has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
 has last_network_state => ( is => 'rw' );
@@ -41,6 +32,8 @@ after update_game_state  => \&update_last_player_hit;
 has in_network_game   => ( is => 'rw' );
 has local_player_id   => ( is => 'rw' );
 has network_player_id => ( is => 'rw' );
+has team_colors =>
+  ( is => 'ro', default => sub { { 1 => [ 1, 1, 1, 1 ], 2 => [ .2, .2, 1, 1 ], 3 => [ .2, 1, .2, 1 ] } } );
 
 1;
 
@@ -75,7 +68,6 @@ sub _build_client_state {
         thrust     => 0,
         turn_left  => 0,
         turn_right => 0,
-        zoom       => 1,
         camera     => { x => 0, y => 0 },
     };
 }
@@ -162,65 +154,43 @@ sub connect {
 }
 
 sub render_world {
-    my ( $self, $world, $game_state ) = @_;
+    my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
     my $cam          = $self->client_state->{camera};
     @{$cam}{qw(x y)} = @{$player_actor}{qw(x y)} if $player_actor;
 
-    if ( defined $game_state->{ceiling}
-        and ( my $ceil_height = $world->h / 2 - $cam->{y} + $game_state->{ceiling} ) >= 0 )
-    {
-        $world->draw_rect( [ 0, 0, $world->w, $ceil_height ], 0xff_30_30_ff );
-        $world->draw_line( [ 0, $ceil_height ], [ $world->w, $ceil_height ], 0xff_ff_ff_ff, 0 );
-    }
-
-    if ( defined $game_state->{floor}
-        and ( my $floor_height = $world->h / 2 - $cam->{y} + $game_state->{floor} ) <= $world->h )
-    {
-        $world->draw_rect( [ 0, $floor_height, $world->w, $world->h - $floor_height ], 0xff_30_30_ff );
-        $world->draw_line( [ 0, $floor_height ], [ $world->w, $floor_height ], 0xff_ff_ff_ff, 0 );
-    }
-
     my $highlight = ( $self->last_player_hit > time - 2 );
-    my $stall_color = $highlight ? 0xff_ff_ff_88 : 0xff_ff_ff_44;
-    $world->draw_line(
-        [ ( $world->w * $_ - $cam->{x} ) % $world->w, 0, ],
-        [ ( $world->w * $_ - $cam->{x} ) % $world->w, $world->h ],
-        $stall_color, 0
-    ) for qw( 0.25 0.5 0.75 1 );
 
-    $world->draw_line(
-        [ 0, ( $world->h * $_ - $cam->{y} ) % $world->h ],
-        [ $world->w, ( $world->h * $_ - $cam->{y} ) % $world->h ],
-        $stall_color, 0
-    ) for qw( 0.25 0.5 0.75 1 );
+    my $STAR_SEED      = 0x9d2c5680;
+    my $STAR_TILE_SIZE = 512;
 
-    my $sprites       = $self->player_sprites;
-    my $bullet_sprite = $self->bullet_sprite;
-    my %actors        = %{ $game_state->{actors} };
-    for my $flier ( values %actors ) {
-        my $sprite = $sprites->{ $flier->{team} };
-        if ( $flier->{is_bullet} ) {
-            $bullet_sprite->x( $flier->{x} - $cam->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 8 );
-            $bullet_sprite->y( $flier->{y} - $cam->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 8 );
-            $bullet_sprite->draw( $world );
+    my $w = $self->w;
+    my $h = $self->h;
+    my $c = $self->team_colors;
+
+    my %actors = %{ $game_state->{actors} };
+
+    $self->with_sprite_setup(
+        sub {
+            for my $flier ( values %actors ) {
+                $self->send_sprite_data(
+                    location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
+                    color => $c->{ $flier->{team} },
+                    $flier->{is_bullet}
+                    ? (
+                        rotation => 0,
+                        scale    => .3,
+                        texture  => "bullet",
+                      )
+                    : (
+                        rotation => $flier->{rot},
+                        texture  => "player1",
+                        scale    => 1.5,
+                    )
+                );
+            }
         }
-        else {
-
-            $sprite->x( $flier->{x} - $cam->{x} + $world->w / 2 - $sprite->{orig_surface}->w / 4 );
-            $sprite->y( $flier->{y} - $cam->{y} + $world->h / 2 - $sprite->{orig_surface}->h / 4 );
-            $sprite->rotation( $flier->{rot} + 180 );
-            $sprite->clip(
-                [
-                    $sprite->{orig_surface}->w / 4 + ( $sprite->surface->w - $sprite->{orig_surface}->w ) / 2,
-                    $sprite->{orig_surface}->h / 4 + ( $sprite->surface->h - $sprite->{orig_surface}->h ) / 2,
-                    $sprite->{orig_surface}->w / 2,
-                    $sprite->{orig_surface}->h / 2,
-                ]
-            );
-            $sprite->draw( $world );
-        }
-    }
+    );
 
     my @new_bullets = grep $_->{is_bullet}, map $actors{$_}, @{ $game_state->{new_actors} };
     $self->play_sound( "shot", $_, $cam, 3 ) for @new_bullets;
@@ -250,26 +220,28 @@ sub play_sound {
 sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
-    $self->draw_gfx_text( [ 0, 0 ], 0xff_ff_ff_ff, "Controls: left up right d - Quit: q - Connect to server: n" );
-    $self->draw_gfx_text(
-        [ 0, $self->h - 48 ],
-        0xff_ff_ff_ff, sprintf "Audio channels:|%s|",
+    $self->print_text_2D( [ 0, $self->h - 12 ], "Controls: left up right d - Quit: q - Connect to server: n" );
+
+    $self->print_text_2D(
+        [ 0, 50 ],
+        sprintf "Audio channels:|%s|",
         join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31
     );
-    $self->draw_gfx_text( [ 0, $self->h - 40 ], 0xff_ff_ff_ff, "HP: $player_actor->{hp}" ) if $player_actor;
-    $self->draw_gfx_text(
-        [ 0, $self->h - 32 ],
-        0xff_ff_ff_ff, join ' ',
+    $self->print_text_2D( [ 0, 40 ], "HP: $player_actor->{hp}" ) if $player_actor;
+    $self->print_text_2D(
+        [ 0, 30 ],
+        "X Y R Speed: " . join ' ',
+        map sprintf( "% 8.2f", $_ ),
         ( map $player_actor->{$_}, qw( x y rot ) ),
         ( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )**0.5
     ) if $player_actor;
-    $self->draw_gfx_text( [ 0, $self->h - 24 ], 0xff_ff_ff_ff, $self->fps );
-    $self->draw_gfx_text( [ 0, $self->h - 16 ], 0xff_ff_ff_ff, $self->frame );
-    $self->draw_gfx_text( [ 0, $self->h - 8 ],  0xff_ff_ff_ff, $game_state->{tick} ) if $game_state->{tick};
+    $self->print_text_2D( [ 0, 20 ], "FPS: " . $self->fps );
+    $self->print_text_2D( [ 0, 10 ], "Frame: " . $self->frame );
+    $self->print_text_2D( [], "Tick: " . $game_state->{tick} ) if $game_state->{tick};
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
-    $self->draw_gfx_text( [ 0, 8 + $_ * 8 ], 0xff_ff_ff_ff, $to_display[$_] ) for 0 .. $#to_display;
+    $self->print_text_2D( [ 0, $self->h - 22 - $_ * 10 ], $to_display[$_] ) for 0 .. $#to_display;
 
     return;
 }

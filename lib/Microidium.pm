@@ -5,9 +5,11 @@ package Microidium;
 
 =head1
 
-=for HTML <p><img src="https://dl.dropboxusercontent.com/u/10190786/microidium.png" /></p>
+=for HTML <p><a href="http://www.youtube.com/watch?v=KoLMoc5RvQ4"><img src="http://img.youtube.com/vi/KoLMoc5RvQ4/0.jpg" /></a></p>
 
 Sounds made with http://www.bfxr.net/
+
+Font texture made with http://www.codehead.co.uk/cbfg/
 
 =cut
 

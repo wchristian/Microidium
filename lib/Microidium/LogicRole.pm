@@ -18,9 +18,9 @@ sub _build_game_state {
         players       => {},
         actors        => {},
         last_actor_id => 0,
-        ceiling       => -1800,
+        ceiling       => 3000,
         floor         => 0,
-        gravity       => 0.15,
+        gravity       => -0.15,
     };
 }
 
@@ -58,11 +58,11 @@ sub plan_bot_respawns {
         $new_game_state,
         {
             x            => $bot_start[0] - 750 + rand 1500,
-            y            => min( 0, $bot_start[1] - 750 + rand 1500 ),
+            y            => max( 200, $bot_start[1] - 750 + rand 1500 ),
             x_speed      => 0,
             y_speed      => 0,
             turn_speed   => 1 + rand 5,
-            rot          => 180,
+            rot          => 0,
             thrust_power => 0.2 + rand,
             max_speed    => 8,
             thrust_stall => 0.05,
@@ -92,9 +92,9 @@ sub plan_player_respawns {
             x            => 0,
             y            => 0,
             x_speed      => 0,
-            y_speed      => -32,
+            y_speed      => 32,
             turn_speed   => 5,
-            rot          => 180,
+            rot          => 0,
             thrust_power => 1,
             max_speed    => 10,
             thrust_stall => 0.05,
@@ -192,8 +192,8 @@ sub simple_ai_step {
     $angle_to_player -= 360 if $angle_to_player > 180;
     $angle_to_player += 360 if $angle_to_player < -180;
 
-    my $turn_left  = $angle_to_player < 0;
-    my $turn_right = $angle_to_player > 0;
+    my $turn_left  = $angle_to_player > 0;
+    my $turn_right = $angle_to_player < 0;
     my $thrust     = abs( $angle_to_player ) < 60;
     my $fire       = abs( $angle_to_player ) < 15;
 
@@ -207,10 +207,10 @@ sub apply_translation_forces {
     my $y_speed_delta = 0;
 
     my $old_game_state = $self->game_state;
-    my $stalled = ( $old_player->{y} > $old_game_state->{floor} or $old_player->{y} < $old_game_state->{ceiling} );
+    my $stalled = ( $old_player->{y} < $old_game_state->{floor} or $old_player->{y} > $old_game_state->{ceiling} );
     my $gravity = $old_game_state->{gravity};
     $gravity *= $old_player->{grav_cancel} if $client_state->{thrust} and !$stalled;
-    $gravity *= -1 if $old_player->{y} > $old_game_state->{floor};
+    $gravity *= -1 if $old_player->{y} < $old_game_state->{floor};
     $y_speed_delta += $gravity;
 
     if ( $client_state->{thrust} ) {
@@ -242,7 +242,7 @@ sub apply_rotation_forces {
     my ( $self, $old_player, $new_player, $new_game_state, $client_state ) = @_;
     return if !$client_state->{turn_left} and !$client_state->{turn_right};
 
-    my $sign = $client_state->{turn_right} ? -1 : 1;
+    my $sign = $client_state->{turn_right} ? 1 : -1;
     my $turn_speed = $old_player->{turn_speed};
     $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
     $new_player->{rot} += 360 if $new_player->{rot} < 0;
@@ -287,8 +287,8 @@ sub apply_location_damage {
 
     my $game_state = $self->game_state;
     my $loss_key =
-        ( $actor->{y} > $game_state->{floor} )   ? 'floor'
-      : ( $actor->{y} < $game_state->{ceiling} ) ? 'ceil'
+        ( $actor->{y} < $game_state->{floor} )   ? 'floor'
+      : ( $actor->{y} > $game_state->{ceiling} ) ? 'ceil'
       :                                            'normal';
     $new_actor->{hp} -= $actor->{hp_loss_speed}{$loss_key};
     return;
