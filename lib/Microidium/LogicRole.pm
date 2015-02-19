@@ -90,7 +90,7 @@ sub plan_player_respawns {
         next if $actor_id and $old_game_state->{actors}{$actor_id};
         my %actor = (
             x            => 0,
-            y            => 0,
+            y            => 200,
             x_speed      => 0,
             y_speed      => 32,
             turn_speed   => 6,
