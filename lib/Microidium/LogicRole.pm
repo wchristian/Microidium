@@ -101,7 +101,7 @@ sub plan_player_respawns {
             grav_cancel  => 0.3,
             gun_heat     => 0,
             gun_cooldown => 1,
-            gun_use_heat => 10,
+            gun_use_heat => 5,
             input        => "player_control",
             team         => 1,
             hp           => 12,
@@ -257,14 +257,14 @@ sub apply_weapon_effects {
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
     if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
         my %bullet = (
-            max_speed     => 13,
+            max_speed     => 20,
             thrust_power  => 9,
             thrust_stall  => 9,
             x_speed       => $new_player->{x_speed},
             y_speed       => $new_player->{y_speed},
             x             => $new_player->{x},
             y             => $new_player->{y},
-            rot           => $new_player->{rot},
+            rot           => $new_player->{rot} + ( 7 * rand() ),
             hp            => 60,
             hp_loss_speed => {
                 normal => 1,
