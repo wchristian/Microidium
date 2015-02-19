@@ -157,7 +157,19 @@ sub render_world {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
     my $cam          = $self->client_state->{camera};
-    @{$cam}{qw(x y)} = @{$player_actor}{qw(x y)} if $player_actor;
+
+    if ( $player_actor ) {
+        my $dist = 50 + ( 650 * $self->client_state->{thrust} );
+        $dist -= 300 if $self->client_state->{turn_left} or $self->client_state->{turn_right};
+        $dist = 0 if $dist < 0;
+        my $cam_x_target = $player_actor->{x} + ( $dist * sin deg2rad $player_actor->{rot} );
+        my $cam_y_target = $player_actor->{y} + ( $dist * cos deg2rad $player_actor->{rot} );
+        my $diff_x       = $cam_x_target - $cam->{x};
+        my $diff_y       = $cam_y_target - $cam->{y};
+        my $damp         = 0.03;
+        $cam->{x} += $diff_x * $damp;
+        $cam->{y} += $diff_y * $damp;
+    }
 
     my $highlight = ( $self->last_player_hit > time - 2 );
 
