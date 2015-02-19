@@ -242,6 +242,7 @@ sub play_sound {
     $angle = $angle >= 0 ? ( min $angle, 90 ) : ( 360 + max $angle, -90 );
 
     my $channel = SDL::Mixer::Channels::play_channel( -1, $self->sounds->{$sound_id}, 0 );
+    SDL::Mixer::Channels::volume( $channel, 20 );
     SDL::Mixer::Effects::set_position( $channel, $angle, $distance );
     return;
 }
