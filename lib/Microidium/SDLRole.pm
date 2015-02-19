@@ -126,7 +126,7 @@ sub init_sprites {
       for qw( time offset rotation scale color texture );
     $self->attribs->{sprites}{$_} = glGetAttribLocationARB_p $shader, $_ for qw( vertex_pos tex_coord );
 
-    $self->textures->{$_} = $self->load_texture( dfile "$_.png" ) for qw( player1 bullet );
+    $self->textures->{$_} = $self->load_texture( dfile "$_.png" ) for qw( player1 bullet blob );
 
     return;
 }

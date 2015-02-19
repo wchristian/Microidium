@@ -172,6 +172,35 @@ sub render_world {
 
     $self->with_sprite_setup(
         sub {
+            for my $starscale ( 1 ) {
+                my $size = $STAR_TILE_SIZE / $starscale;
+
+                # Top-left tile's top-left position.
+                my $sx = int( ( $cam->{x} - $w / 2 ) / $size ) * $size - ( $size * 3 );
+                my $sy = int( ( $cam->{y} - $h / 2 ) / $size ) * $size - ( $size * 3 );
+
+                for ( my $i = $sx ; $i <= $w + $sx + ( $size * 6 ) ; $i += $size ) {
+                    for ( my $j = $sy ; $j <= $h + $sy + ( $size * 6 ) ; $j += $size ) {
+                        my $hash = mix( $STAR_SEED, $i, $j );
+                        for ( 1 .. 2 ) {
+                            my $px = $i + ( $hash % $size );
+                            $hash >>= 3;
+                            my $py = $j + ( $hash % $size );
+                            $hash >>= 3;
+                            my $color =
+                              $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
+                            $self->send_sprite_data(
+                                location => [ ( $px - $cam->{x} ) / $self->w, ( $py - $cam->{y} ) / $self->h, ],
+                                color    => $color,
+                                rotation => 0,
+                                scale    => 15,
+                                texture  => "blob",
+                            );
+                        }
+                    }
+                }
+            }
+
             for my $flier ( values %actors ) {
                 $self->send_sprite_data(
                     location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
