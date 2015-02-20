@@ -17,7 +17,8 @@ use Clone 'clone';
 use OpenGL::Debug ':all';
 use IO::All -binary;
 use OpenGL::Image;
-use Math::Trig qw' deg2rad rad2deg ';
+use Math::Trig qw' rad2deg ';
+use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Carp 'confess';
 
 use Microidium::Helpers 'dfile';

@@ -3,7 +3,8 @@ package Microidium::LogicRole;
 # VERSION
 
 use List::Util qw( first min max );
-use Math::Trig qw' deg2rad rad2deg ';
+use Math::Trig qw' rad2deg ';
+use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Math::Vec ();
 
 use Moo::Role;

@@ -30,7 +30,7 @@ my %WriteMakefileArgs = (
   "NAME" => "Microidium",
   "PREREQ_PM" => {
     "Acme::MITHALDU::BleedingOpenGL" => 0,
-    "Acme::Math::XS" => 0,
+    "Acme::MITHALDU::XSGrabBag" => 0,
     "Carp" => 0,
     "Carp::Always" => 0,
     "Clone" => 0,
@@ -83,7 +83,7 @@ my %WriteMakefileArgs = (
 
 my %FallbackPrereqs = (
   "Acme::MITHALDU::BleedingOpenGL" => 0,
-  "Acme::Math::XS" => 0,
+  "Acme::MITHALDU::XSGrabBag" => 0,
   "Carp" => 0,
   "Carp::Always" => 0,
   "Clone" => 0,

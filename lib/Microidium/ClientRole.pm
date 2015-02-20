@@ -9,8 +9,7 @@ use List::Util qw( min max );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
 use PryoNet::Client;
-use Acme::Math::XS 'mix';
-use Math::Trig qw' deg2rad ';
+use Acme::MITHALDU::XSGrabBag qw' deg2rad mix ';
 
 use Moo::Role;
 
