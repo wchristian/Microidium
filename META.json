@@ -4,13 +4,13 @@
       "Christian Walde <walde.christian@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 5.023, CPAN::Meta::Converter version 2.142690",
+   "generated_by" : "Dist::Zilla version 5.031, CPAN::Meta::Converter version 2.143240",
    "license" : [
       "unrestricted"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : "2"
+      "version" : 2
    },
    "name" : "Microidium",
    "no_index" : {
@@ -28,23 +28,30 @@
       "configure" : {
          "requires" : {
             "ExtUtils::MakeMaker" : "0",
-            "File::ShareDir::Install" : "0.06"
+            "File::ShareDir::Install" : "0.06",
+            "perl" : "5.010"
          }
       },
       "develop" : {
          "requires" : {
             "Pod::Coverage::TrustPod" : "0",
             "Test::CPAN::Meta" : "0",
+            "Test::More" : "0",
             "Test::Pod" : "1.41",
             "Test::Pod::Coverage" : "1.08",
-            "Test::Spelling" : "0.12"
+            "Test::Spelling" : "0.12",
+            "Test::Version" : "1"
          }
       },
       "runtime" : {
          "requires" : {
+            "Acme::MITHALDU::BleedingOpenGL" : "0",
+            "Acme::Math::XS" : "0",
+            "Carp" : "0",
             "Carp::Always" : "0",
             "Clone" : "0",
             "File::ShareDir" : "0",
+            "IO::All" : "0",
             "IO::Async::Future" : "0",
             "IO::Async::Internals::Connector" : "0",
             "IO::Async::Loop" : "0",
@@ -55,6 +62,7 @@
             "Math::Vec" : "0",
             "Moo" : "0",
             "Moo::Role" : "0",
+            "OpenGL::Image" : "0",
             "SDL" : "0",
             "SDL::Constants" : "0",
             "SDL::Mixer" : "0",
@@ -62,13 +70,15 @@
             "SDL::Mixer::Effects" : "0",
             "SDL::Mixer::Samples" : "0",
             "SDLx::App" : "0",
-            "SDLx::Sprite" : "0",
             "Sereal" : "0",
             "Sub::Exporter::Simple" : "0",
+            "Sub::Install" : "0",
+            "Sub::Name" : "0",
             "Time::HiRes" : "0",
             "curry" : "0",
             "lib" : "0",
-            "perl" : "5.010"
+            "perl" : "5.010",
+            "strictures" : "0"
          }
       },
       "test" : {
@@ -80,8 +90,8 @@
             "Microidium::Client" : "0",
             "Test::InDistDir" : "0",
             "Test::More" : "0",
+            "perl" : "5.010",
             "strict" : "0",
-            "strictures" : "0",
             "warnings" : "0"
          }
       }
@@ -113,6 +123,10 @@
       },
       "Microidium::ServerRole" : {
          "file" : "lib/Microidium/ServerRole.pm",
+         "version" : "0.000001"
+      },
+      "OpenGL::Debug" : {
+         "file" : "lib/OpenGL/Debug.pm",
          "version" : "0.000001"
       },
       "PryoNet::Client" : {

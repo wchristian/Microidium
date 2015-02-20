@@ -3,7 +3,7 @@ use strictures;
 package OpenGL::Debug;
 
 use Sub::Install 'install_sub';
-use OpenGL qw( GL_NO_ERROR glGetError gluErrorString );
+use Acme::MITHALDU::BleedingOpenGL qw( GL_NO_ERROR glGetError gluErrorString );
 use Carp 'confess';
 use Sub::Name 'subname';
 use Carp::Always;
@@ -16,11 +16,11 @@ sub import {
     my @tags = grep { /^:/ } @imports;
     $_ =~ s/^:// for @tags;
     @imports = grep { !/^:/ } @imports;
-    push @imports, map @{ $OpenGL::EXPORT_TAGS{$_} }, @tags;
+    push @imports, map @{ $Acme::MITHALDU::BleedingOpenGL::EXPORT_TAGS{$_} }, @tags;
 
     my %uniq_imports = map { $_ => 1 } @imports;
 
-    my %all_consts = map { $_ => 1 } map { @{ $OpenGL::EXPORT_TAGS{$_} } } grep { /const/ } keys %OpenGL::EXPORT_TAGS;
+    my %all_consts = map { $_ => 1 } map { @{ $Acme::MITHALDU::BleedingOpenGL::EXPORT_TAGS{$_} } } grep { /const/ } keys %Acme::MITHALDU::BleedingOpenGL::EXPORT_TAGS;
 
     my $glut_init_skips = "glut(MainLoop|Init(|DisplayMode|Context(Version|Profile|Flags)|Window(Size|Position)))";
 
@@ -28,7 +28,7 @@ sub import {
     my @functions = grep { !$all_consts{$_} and !/^($glut_init_skips|glutCreateWindow)$/ } keys %uniq_imports;
 
     my @caller = caller;
-    install_sub( { code => \&{"OpenGL::$_"},   into => $caller[0], as => $_ } ) for @non_debugs;
+    install_sub( { code => \&{"Acme::MITHALDU::BleedingOpenGL::$_"},   into => $caller[0], as => $_ } ) for @non_debugs;
     install_sub( { code => make_wrapped( $_ ), into => $caller[0], as => $_ } ) for @functions;
 
     return;
@@ -37,7 +37,7 @@ sub import {
 sub make_wrapped {
     my ( $function ) = @_;
 
-    my $code = \&{"OpenGL::$function"};
+    my $code = \&{"Acme::MITHALDU::BleedingOpenGL::$function"};
 
     return subname $function, sub {
         my $entry_error = ( !$is_in_Begin ) ? glGetError() : 0;
