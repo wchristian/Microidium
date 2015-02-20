@@ -58,7 +58,7 @@ sub plan_bot_respawns {
         $new_game_state,
         {
             x => $bot_start[0] + ( rand() > .5 ? 1 : -1 ) * ( 750 + rand 750 ),
-            y            => max( 200, $bot_start[1] - 750 + rand 1500 ),
+            y            => min( 2800, max( 200, $bot_start[1] - 1500 + rand 3000 ) ),
             x_speed      => 0,
             y_speed      => 0,
             turn_speed   => 1 + rand 5,
