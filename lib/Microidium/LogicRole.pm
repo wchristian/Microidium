@@ -57,7 +57,7 @@ sub plan_bot_respawns {
     $self->plan_actor_addition(
         $new_game_state,
         {
-            x            => $bot_start[0] - 750 + rand 1500,
+            x => $bot_start[0] + ( rand() > .5 ? 1 : -1 ) * ( 750 + rand 750 ),
             y            => max( 200, $bot_start[1] - 750 + rand 1500 ),
             x_speed      => 0,
             y_speed      => 0,
@@ -71,8 +71,8 @@ sub plan_bot_respawns {
             gun_cooldown => 1,
             gun_use_heat => 60,
             input        => "computer_ai",
-            team         => ( rand > 0.5 ) ? 2 : 3,
-            hp           => 1,
+            team => ( rand > 0.5 ) ? 2 : 3,
+            hp => 1,
         }
     ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
 
