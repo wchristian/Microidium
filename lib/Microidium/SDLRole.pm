@@ -21,6 +21,7 @@ use OpenGL::Image;
 use Math::Trig qw' rad2deg ';
 use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Carp 'confess';
+use Image::Magick ();
 
 use Microidium::Helpers 'dfile';
 

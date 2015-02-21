@@ -10,6 +10,7 @@ requires "IO::Async::Future" => "0";
 requires "IO::Async::Loop" => "0";
 requires "IO::Async::Resolver" => "0";
 requires "IO::Async::Timer::Periodic" => "0";
+requires "Image::Magick" => "0";
 requires "List::Util" => "0";
 requires "Math::Trig" => "0";
 requires "Math::Vec" => "0";
