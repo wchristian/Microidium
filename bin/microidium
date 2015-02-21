@@ -4,6 +4,7 @@ package microidium;
 
 use lib '../lib';
 use lib 'lib';
+use local::lib 'local';
 use Microidium;
 
 Microidium->new->run;

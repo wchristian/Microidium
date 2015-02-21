@@ -46,14 +46,13 @@
       "runtime" : {
          "requires" : {
             "Acme::MITHALDU::BleedingOpenGL" : "0",
-            "Acme::Math::XS" : "0",
+            "Acme::MITHALDU::XSGrabBag" : "0",
             "Carp" : "0",
             "Carp::Always" : "0",
             "Clone" : "0",
             "File::ShareDir" : "0",
             "IO::All" : "0",
             "IO::Async::Future" : "0",
-            "IO::Async::Internals::Connector" : "0",
             "IO::Async::Loop" : "0",
             "IO::Async::Resolver" : "0",
             "IO::Async::Timer::Periodic" : "0",
@@ -87,7 +86,6 @@
             "File::Temp" : "0",
             "IO::Handle" : "0",
             "IPC::Open3" : "0",
-            "Microidium::Client" : "0",
             "Test::InDistDir" : "0",
             "Test::More" : "0",
             "perl" : "5.010",

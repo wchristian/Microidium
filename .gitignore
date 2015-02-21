@@ -21,6 +21,8 @@
 /MYMETA.json
 /Microidium-*
 
+/local*
 /nytprof*
 /kryonet*
 /IO-Async-*
+/cpanfile.snapshot

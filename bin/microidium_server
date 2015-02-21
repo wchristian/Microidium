@@ -4,6 +4,7 @@ package microidium_server;
 
 use lib '../lib';
 use lib 'lib';
+use local::lib;
 use Microidium::Server;
 use DB::Skip pkgs => [
     qw( IO::Async::Stream IO::Async::Handle IO::Async::Notifier IO::Async::Loop
