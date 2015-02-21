@@ -23,7 +23,7 @@ sub connect {
         socktype         => "stream",
         on_stream        => $self->curry::on_accept,
         on_resolve_error => sub { die "Cannot resolve - $_[0]"; },
-        on_connect_error => sub { die "Cannot connect"; },
+        on_connect_error => sub { die "Cannot connect - $_[0] failed $_[-1]\n"; },
     );
 
     return;
