@@ -152,6 +152,16 @@ sub connect {
     return;
 }
 
+my %spring = (
+    anchor_pos => -50,
+    length     => 50,
+    stiffness  => -100,
+    damping    => -2.4,
+    mass       => .1,
+    mass_pos   => [ 0, 0 ],
+    mass_vel   => [ 0, 0 ],
+);
+
 sub render_world {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
@@ -168,6 +178,19 @@ sub render_world {
         my $damp         = 0.03;
         $cam->{x} += $diff_x * $damp;
         $cam->{y} += $diff_y * $damp;
+    }
+
+    if ( $self->client_state->{fire} ) {
+        $spring{mass_pos}[$_] += -6 + rand 12 for 0 .. 1;
+    }
+    for my $i ( 0 .. 1 ) {
+        next if $spring{mass_pos}[$i] < 1 and .2 > abs $spring{mass_vel}[$i];
+        my $spring_force = $spring{stiffness} * ( $spring{mass_pos}[$i] - $spring{anchor_pos} - $spring{length} );
+        my $damp_force   = $spring{damping} * $spring{mass_vel}[$i];
+        my $acceleration = ( $spring_force + $damp_force ) / $spring{mass};
+        $spring{mass_vel}[$i] += $acceleration * 1 / 60;
+        $spring{mass_pos}[$i] += $spring{mass_vel}[$i] * 1 / 60;
+        $cam->{ $i ? "x" : "y" } += $spring{mass_pos}[$i];
     }
 
     my $highlight = ( $self->last_player_hit > time - 2 );
