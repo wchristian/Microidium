@@ -166,14 +166,21 @@ sub new_actor_id {
 
 sub computer_ai {
     my ( $self, $actor ) = @_;
-    delete $actor->{enemy} if $actor->{enemy} and !$self->game_state->{actors}{ $actor->{enemy} };
+    my $actors = $self->game_state->{actors};
+    delete $actor->{enemy}
+      if $actor->{enemy}
+      and ( !$actors->{ $actor->{enemy} }
+        or $actors->{ $actor->{enemy} }->{y} < $self->too_deep );
     $actor->{enemy} ||= $self->find_enemy( $actor );
     return $self->simple_ai_step( $actor, $actor->{enemy} );
 }
 
+sub too_deep { shift->game_state->{floor} - 100 }
+
 sub find_enemy {
     my ( $self, $actor ) = @_;
-    my @possible_enemies =
+    my $too_deep = $self->too_deep;
+    my @possible_enemies = grep { $_->{y} > $too_deep }
       grep { !$_->{is_bullet} and $_->{team} != $actor->{team} } values %{ $self->game_state->{actors} };
     return if !@possible_enemies;
     my $id = int rand @possible_enemies;
