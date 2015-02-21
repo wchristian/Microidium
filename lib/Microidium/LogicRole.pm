@@ -197,7 +197,7 @@ sub simple_ai_step {
 
     my $turn_left  = $angle_to_player > 0;
     my $turn_right = $angle_to_player < 0;
-    my $thrust     = abs( $angle_to_player ) < 60;
+    my $thrust     = abs( $angle_to_player ) < 50;
     my $fire       = abs( $angle_to_player ) < 15;
 
     return { turn_left => $turn_left, turn_right => $turn_right, thrust => $thrust, fire => $fire };
