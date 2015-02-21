@@ -63,6 +63,7 @@ sub plan_bot_respawns {
             x_speed      => 0,
             y_speed      => 0,
             turn_speed   => 1 + rand 5,
+            turn_damp    => 0.2 + rand 0.8,
             rot          => 0,
             thrust_power => 0.2 + rand,
             max_speed    => 8,
@@ -95,6 +96,7 @@ sub plan_player_respawns {
             x_speed      => 0,
             y_speed      => 32,
             turn_speed   => 6,
+            turn_damp    => 0.5,
             rot          => 0,
             thrust_power => 1,
             max_speed    => 10,
@@ -245,7 +247,7 @@ sub apply_rotation_forces {
 
     my $sign = $client_state->{turn_right} ? 1 : -1;
     my $turn_speed = $old_player->{turn_speed};
-    $turn_speed /= 2 if $client_state->{thrust};
+    $turn_speed *= $old_player->{turn_damp} if $client_state->{thrust};
     $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
     $new_player->{rot} += 360 if $new_player->{rot} < 0;
     $new_player->{rot} -= 360 if $new_player->{rot} > 360;
