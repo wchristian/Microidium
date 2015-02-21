@@ -59,6 +59,8 @@ sub plan_bot_respawns {
     };
 
     my $team = rand > 0.5 ? 2 : 3;
+    $team = 2 if $team != 2 and grep( { $_->{team} == 2 } @players ) <= 2;
+    $team = 3 if $team != 3 and grep( { $_->{team} == 3 } @players ) <= 2;
 
     my %stats = (
         x => $bot_start[0] + ( rand > .5 ? 1 : -1 ) * ( 750 + rand 750 ),
