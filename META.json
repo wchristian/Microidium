@@ -47,6 +47,7 @@
          "requires" : {
             "Acme::MITHALDU::BleedingOpenGL" : "0",
             "Acme::MITHALDU::XSGrabBag" : "0",
+            "Alien::SDL" : "1.446",
             "Carp" : "0",
             "Carp::Always" : "0",
             "Clone" : "0",

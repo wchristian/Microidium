@@ -4,6 +4,7 @@ package Microidium::SDLRole;
 
 use 5.010;
 
+use Alien::SDL 1.446 ();
 use SDL                  ();
 use SDLx::App            ();
 use SDL::Constants       ();
