@@ -63,7 +63,7 @@ sub plan_bot_respawns {
     $team = 3 if $team != 3 and grep( { $_->{team} == 3 } @players ) <= 2;
 
     my %stats = (
-        x => $bot_start[0] + ( rand > .5 ? 1 : -1 ) * ( 750 + rand 750 ),
+        x => $bot_start[0] + ( rand > .5 ? 1 : -1 ) * ( 550 + rand 550 ),
         y            => min( 2800, max( 200, $bot_start[1] - 1500 + rand 3000 ) ),
         x_speed      => 0,
         y_speed      => 0,
