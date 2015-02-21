@@ -46,6 +46,9 @@ sub update_game_state {
 sub plan_bot_respawns {
     my ( $self, $new_game_state ) = @_;
 
+    my @players = grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} };
+    return if @players > 10;
+
     my @bot_start = do {
         my $old_game_state       = $self->game_state;
         my $old_players          = $old_game_state->{players};
@@ -55,28 +58,28 @@ sub plan_bot_respawns {
         $actor ? ( $actor->{x}, $actor->{y} ) : ( 0, 0 );
     };
 
-    $self->plan_actor_addition(
-        $new_game_state,
-        {
-            x => $bot_start[0] + ( rand() > .5 ? 1 : -1 ) * ( 750 + rand 750 ),
-            y            => min( 2800, max( 200, $bot_start[1] - 1500 + rand 3000 ) ),
-            x_speed      => 0,
-            y_speed      => 0,
-            turn_speed   => 3 + rand 5,
-            turn_damp    => 0.2 + rand 0.8,
-            rot          => 0,
-            thrust_power => 0.2 + rand,
-            max_speed    => 8 + rand 20,
-            thrust_stall => 0.05,
-            grav_cancel  => 0.3,
-            gun_heat     => 0,
-            gun_cooldown => 1,
-            gun_use_heat => 60,
-            input        => "computer_ai",
-            team => ( rand > 0.5 ) ? 2 : 3,
-            hp => 1,
-        }
-    ) if ( grep { !$_->{is_bullet} } values %{ $new_game_state->{actors} } ) < 10;
+    my $team = rand > 0.5 ? 2 : 3;
+
+    my %stats = (
+        x => $bot_start[0] + ( rand > .5 ? 1 : -1 ) * ( 750 + rand 750 ),
+        y            => min( 2800, max( 200, $bot_start[1] - 1500 + rand 3000 ) ),
+        x_speed      => 0,
+        y_speed      => 0,
+        turn_speed   => 3 + rand 5,
+        turn_damp    => 0.2 + rand 0.8,
+        rot          => 0,
+        thrust_power => 0.2 + rand,
+        max_speed    => 8 + rand 20,
+        thrust_stall => 0.05,
+        grav_cancel  => 0.3,
+        gun_heat     => 0,
+        gun_cooldown => 1,
+        gun_use_heat => 60,
+        input        => "computer_ai",
+        team         => $team,
+        hp           => 1,
+    );
+    $self->plan_actor_addition( $new_game_state, \%stats );
 
     return;
 }
