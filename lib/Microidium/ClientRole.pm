@@ -258,7 +258,7 @@ sub render_world {
                         rotation => 0,
                         scale    => .3,
                         texture  => "bullet",
-                        ( $flier->{blink_until} >= time ) ? ( color => [ 0, 0, 0, 1 ] ) : (),
+                        ( $flier->{blink_until} and $flier->{blink_until} >= time ) ? ( color => [ 0, 0, 0, 1 ] ) : (),
                       )
                     : (
                         rotation => $flier->{rot},
