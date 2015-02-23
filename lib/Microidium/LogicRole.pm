@@ -31,6 +31,7 @@ sub update_game_state {
     $self->planned_new_actors( [] );
 
     $new_game_state->{new_actors}     = [];
+    $new_game_state->{events}         = [];
     $new_game_state->{removed_actors} = [];
     $new_game_state->{tick}++;
 
@@ -294,6 +295,12 @@ sub apply_weapon_effects {
         $self->plan_actor_addition( $new_game_state, \%bullet );
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
     }
+    return;
+}
+
+sub add_event {
+    my ( $self, $new_game_state, $event_type, $args ) = @_;
+    push @{ $new_game_state->{events} }, { type => $event_type, %{$args} };
     return;
 }
 
