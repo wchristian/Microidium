@@ -21,7 +21,6 @@ use OpenGL::Image;
 use Math::Trig qw' rad2deg ';
 use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Carp 'confess';
-use Image::Magick ();
 
 use Microidium::Helpers 'dfile';
 
@@ -54,7 +53,7 @@ sub _build_app {
     );
 
     $self->init_sprites;
-    $self->init_text_2D( dfile "courier.png" );
+    $self->init_text_2D( dfile "courier.tga" );
 
     return $app;
 }
@@ -129,7 +128,7 @@ sub init_sprites {
       for qw( time offset rotation scale color texture );
     $self->attribs->{sprites}{$_} = glGetAttribLocationARB_p $shader, $_ for qw( vertex_pos tex_coord );
 
-    $self->textures->{$_} = $self->load_texture( dfile "$_.png" ) for qw( player1 bullet blob );
+    $self->textures->{$_} = $self->load_texture( dfile "$_.tga" ) for qw( player1 bullet blob );
 
     return;
 }
@@ -318,7 +317,7 @@ sub sprite_vbo_data {
 sub load_texture {
     my ( $self, $path ) = @_;
 
-    my $img = OpenGL::Image->new( engine => 'Magick', source => $path );
+    my $img = OpenGL::Image->new( engine => 'Targa', source => $path );
     my ( $ifmt, $fmt, $type ) = $img->Get( 'gl_internalformat', 'gl_format', 'gl_type' );
     my ( $w, $h ) = $img->Get( 'width', 'height' );
 

@@ -57,7 +57,6 @@
             "IO::Async::Loop" : "0",
             "IO::Async::Resolver" : "0",
             "IO::Async::Timer::Periodic" : "0",
-            "Image::Magick" : "0",
             "List::Util" : "0",
             "Math::Trig" : "0",
             "Math::Vec" : "0",
