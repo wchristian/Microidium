@@ -179,6 +179,16 @@ sub render_world {
         my $damp         = 0.03;
         $cam->{x} += $diff_x * $damp;
         $cam->{y} += $diff_y * $damp;
+
+        for my $event ( @{ $game_state->{events} } ) {
+            next if $event->{type} ne "flier_died";
+            my $max_dist = 400;
+            my $dist = ( ( $event->{x} - $player_actor->{x} )**2 + ( $event->{y} - $player_actor->{y} )**2 )**0.5;
+            next if $dist > $max_dist;
+            my $max_force = 20;
+            my $force = 1 + ( $max_force - 1 ) * ( ( 4 / ( 3 * ( $dist / $max_dist + 1 )**2 ) ) - 1 / 3 );
+            $spring{mass_pos}[$_] += 0 - $force + rand( 2 * $force ) for 0 .. 1;
+        }
     }
 
     for my $event ( @{ $game_state->{events} } ) {
@@ -187,11 +197,6 @@ sub render_world {
         next if !$actor->{player_id};
         next if $actor->{player_id} != $self->local_player_id;
         $spring{mass_pos}[$_] += -10 + rand 20 for 0 .. 1;
-    }
-
-    for my $event ( @{ $game_state->{events} } ) {
-        next if $event->{type} ne "flier_died";
-        $spring{mass_pos}[$_] += -20 + rand 40 for 0 .. 1;
     }
 
     for my $i ( 0 .. 1 ) {

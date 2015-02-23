@@ -145,9 +145,9 @@ sub modify_actors {
 sub remove_actors {
     my ( $self, $new_game_state ) = @_;
     my $new_actors = $new_game_state->{actors};
-    for ( grep { $_->{hp} <= 0 } values %{$new_actors} ) {
-        $self->add_event( $new_game_state, "flier_died", {} );
-        push @{ $new_game_state->{removed_actors} }, delete $new_actors->{ $_->{id} };
+    for my $actor ( grep { $_->{hp} <= 0 } values %{$new_actors} ) {
+        $self->add_event( $new_game_state, "flier_died", { x => $actor->{x}, y => $actor->{y} } );
+        push @{ $new_game_state->{removed_actors} }, delete $new_actors->{ $actor->{id} };
     }
     return;
 }
