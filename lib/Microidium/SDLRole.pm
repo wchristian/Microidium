@@ -15,7 +15,7 @@ use SDL::Mixer;
 use Time::HiRes 'time';
 use curry;
 use Clone 'clone';
-use OpenGL::Debug ':all';
+use Acme::MITHALDU::BleedingOpenGL ':all';
 use IO::All -binary;
 use OpenGL::Image;
 use Math::Trig qw' rad2deg ';
