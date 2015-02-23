@@ -221,21 +221,23 @@ sub render_world {
                 my $size = $STAR_TILE_SIZE / $starscale;
 
                 # Top-left tile's top-left position.
-                my $sx = int( ( $cam->{x} - $w / 2 ) / $size ) * $size - ( $size * 3 );
-                my $sy = int( ( $cam->{y} - $h / 2 ) / $size ) * $size - ( $size * 3 );
+                my $sx = int( ( $cam->{x} - $w / 2 ) / $size ) * $size - ( $size * 8 );
+                my $sy = int( ( $cam->{y} - $h / 2 ) / $size ) * $size - ( $size * 5 );
 
-                for ( my $i = $sx ; $i <= $w + $sx + ( $size * 6 ) ; $i += $size ) {
-                    for ( my $j = $sy ; $j <= $h + $sy + ( $size * 6 ) ; $j += $size ) {
+                for ( my $i = $sx ; $i <= $w + $sx + ( $size * 15 ) ; $i += $size ) {
+                    for ( my $j = $sy ; $j <= $h + $sy + ( $size * 9 ) ; $j += $size ) {
                         my $hash = mix( $STAR_SEED, $i, $j );
-                        for ( 1 .. 2 ) {
+                        for ( 1 .. 1 ) {
                             my $px = $i + ( $hash % $size );
                             $hash >>= 3;
                             my $py = $j + ( $hash % $size );
                             $hash >>= 3;
+                            my $pz = "0.$hash" * 2;
+                            $hash >>= 3;
                             my $color =
                               $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
                             $self->send_sprite_data(
-                                location => [ ( $px - $cam->{x} ) / $self->w, ( $py - $cam->{y} ) / $self->h, ],
+                                location => [ ( $px - $cam->{x} ) / $self->w, ( $py - $cam->{y} ) / $self->h, $pz ],
                                 color    => $color,
                                 rotation => 0,
                                 scale    => 15,
