@@ -180,9 +180,19 @@ sub render_world {
         $cam->{y} += $diff_y * $damp;
     }
 
-    if ( $self->client_state->{fire} ) {
-        $spring{mass_pos}[$_] += -6 + rand 12 for 0 .. 1;
+    for my $event ( @{ $game_state->{events} } ) {
+        next if $event->{type} ne "bullet_fired";
+        my $actor = $game_state->{actors}{ $event->{owner} };
+        next if !$actor->{player_id};
+        next if $actor->{player_id} != $self->local_player_id;
+        $spring{mass_pos}[$_] += -10 + rand 20 for 0 .. 1;
     }
+
+    for my $event ( @{ $game_state->{events} } ) {
+        next if $event->{type} ne "flier_died";
+        $spring{mass_pos}[$_] += -20 + rand 40 for 0 .. 1;
+    }
+
     for my $i ( 0 .. 1 ) {
         next if $spring{mass_pos}[$i] < 1 and .2 > abs $spring{mass_vel}[$i];
         my $spring_force = $spring{stiffness} * ( $spring{mass_pos}[$i] - $spring{anchor_pos} - $spring{length} );

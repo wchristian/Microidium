@@ -145,8 +145,10 @@ sub modify_actors {
 sub remove_actors {
     my ( $self, $new_game_state ) = @_;
     my $new_actors = $new_game_state->{actors};
-    push @{ $new_game_state->{removed_actors} }, delete $new_actors->{ $_->{id} }
-      for grep { $_->{hp} <= 0 } values %{$new_actors};
+    for ( grep { $_->{hp} <= 0 } values %{$new_actors} ) {
+        $self->add_event( $new_game_state, "flier_died", {} );
+        push @{ $new_game_state->{removed_actors} }, delete $new_actors->{ $_->{id} };
+    }
     return;
 }
 
@@ -289,11 +291,14 @@ sub apply_weapon_effects {
             },
             grav_cancel => 0,
             team        => $old_player->{team},
+            owner       => $old_player->{id},
             is_bullet   => 1,
             input       => "perma_thrust",
         );
         $self->plan_actor_addition( $new_game_state, \%bullet );
         $new_player->{gun_heat} += $old_player->{gun_use_heat};
+        $self->add_event( $new_game_state, "bullet_fired",
+            { x => $bullet{x}, y => $bullet{y}, owner => $old_player->{id}, bullet => \%bullet } );
     }
     return;
 }
