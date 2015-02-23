@@ -10,6 +10,7 @@ use Carp::Always;
 use Microidium::Helpers 'dfile';
 use PryoNet::Client;
 use Acme::MITHALDU::XSGrabBag qw' deg2rad mix ';
+use Time::HiRes 'time';
 
 use Moo::Role;
 
@@ -245,6 +246,9 @@ sub render_world {
                 }
             }
 
+            $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
+              for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };
+
             for my $flier ( values %actors ) {
                 $self->send_sprite_data(
                     location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
@@ -254,6 +258,7 @@ sub render_world {
                         rotation => 0,
                         scale    => .3,
                         texture  => "bullet",
+                        ( $flier->{blink_until} >= time ) ? ( color => [ 0, 0, 0, 1 ] ) : (),
                       )
                     : (
                         rotation => $flier->{rot},
