@@ -8,7 +8,6 @@ uniform float rotation;
 uniform float scale;
 
 out vec2 TexCoord0;
-out vec4 frag_color;
 
 void main() {
     mat3 translate_mat = mat3(
