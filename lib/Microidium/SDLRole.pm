@@ -150,7 +150,7 @@ sub init_text_2D {
 sub render_random_sprite {
     my ( $self, %args ) = @_;
     $args{color} ||= [ rand(), rand(), rand(), rand() ];
-    $args{location} ||= [ 2 * ( rand() - .5 ), 2 * ( rand() - .5 ) ];
+    $args{location} ||= [ 2 * ( rand() - .5 ), 2 * ( rand() - .5 ), 0 ];
     $args{rotation} //= 360 * rand();
     $args{scale}    //= rand();
     $args{texture}  //= "player1";
@@ -198,13 +198,14 @@ sub send_sprite_data {
     my ( $self, %args ) = @_;
     $args{color} ||= [ 1, 1, 1, 1 ];
     $args{scale} //= 1;
+    $args{location}[2] //= 0;
 
     my $uniforms = $self->uniforms->{sprites};
     glBindTexture GL_TEXTURE_2D, $self->textures->{ $args{texture} };
     glUniform1iARB $uniforms->{texture}, 0;
 
     glUniform4fARB $uniforms->{color},    @{ $args{color} };
-    glUniform2fARB $uniforms->{offset},   map 1 * $_, @{ $args{location} };
+    glUniform3fARB $uniforms->{offset},   map 1 * $_, @{ $args{location} };
     glUniform1fARB $uniforms->{rotation}, deg2rad $args{rotation};
     glUniform1fARB $uniforms->{scale},    $args{scale};
 

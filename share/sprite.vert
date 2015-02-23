@@ -3,7 +3,7 @@
 layout (location = 0) in vec3 vertex_pos;
 layout (location = 1) in vec2 tex_coord;
 
-uniform vec2 offset;
+uniform vec3 offset;
 uniform float rotation;
 uniform float scale;
 
@@ -11,10 +11,10 @@ out vec2 TexCoord0;
 
 void main() {
     mat4 translate_mat = mat4(
-        1.0,        0.0,        0.0,   0.0,
-        0.0,        1.0,        0.0,   0.0,
-        0.0,        0.0,        1.0,   0.0,
-        offset.x, offset.y,     0.0,   1.0
+        1.0,        0.0,        0.0,        0.0,
+        0.0,        1.0,        0.0,        0.0,
+        0.0,        0.0,        1.0,        0.0,
+        offset.x,   offset.y,   offset.z,   1.0
     );
 
     mat4 rotate_mat = mat4(
@@ -31,7 +31,20 @@ void main() {
         0.0,            0.0,            1.0,            1.0
     );
 
-    gl_Position = translate_mat * rotate_mat * scale_mat * vec4( vertex_pos.x, vertex_pos.y, 0, 1.0 );
+    float aspect_ratio = 800.0 / 600.0; // w x h
+    float near = 0.001;
+    float far = 10000.0;
+    float range = near - far;
+    float tanHalfFOV = tan( radians ( 90.0 / 2.0 ) );
+
+    mat4 perspmat = mat4(
+        1.0 / ( tanHalfFOV * aspect_ratio ), 0.0,              0.0,                          0.0,
+        0.0,                                 1.0 / tanHalfFOV, 0.0,                          0.0,
+        0.0,                                 0.0,              ( 0.0 - near - far ) / range, 1.0,
+        0.0,                                 0.0,              2.0 * far * near / range,     0.0
+    );
+
+    gl_Position = perspmat * translate_mat * rotate_mat * scale_mat * vec4( vertex_pos.x, vertex_pos.y, 0, 1.0 );
 
     TexCoord0 = tex_coord;
 }
