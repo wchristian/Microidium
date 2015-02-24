@@ -291,7 +291,7 @@ sub render_world {
 
                 if ( !$flier->{is_bullet} ) {
                     my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
-                    push @{ $trail->{segments} }, [ $flier->{x}, $flier->{y} ];
+                    push @{ $trail->{segments} }, [ $flier->{x}, $flier->{y}, $flier->{is_thrusting} ? 1 : 0.3 ];
                     shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
 
                     my %flames = qw(
@@ -318,17 +318,18 @@ sub render_world {
                     }
                 }
 
-                my @color = @{ $c->{ $trail->{team} } };
-                $_++ for @color;
-                $color[3] = 0;
+                my @color = @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
+                my $alpha = 0;
+
+                $_ *= 1.5 for @color;
 
                 for my $i ( 0 .. $#{ $trail->{segments} } - 2 ) {
                     my $segment = $trail->{segments}[$i];
-                    $color[3] += 1 / $max_trail;
+                    $alpha += 1 / $max_trail;
                     $self->send_sprite_data(
                         location =>
                           [ ( $segment->[0] - $cam->{x} ) / $self->w, ( $segment->[1] - $cam->{y} ) / $self->h ],
-                        color    => \@color,
+                        color    => [ @color, $segment->[2] * $alpha ],
                         rotation => 0,
                         scale    => 0.5,
                         texture  => "blob",
