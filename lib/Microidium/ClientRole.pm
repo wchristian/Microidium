@@ -35,6 +35,8 @@ has network_player_id => ( is => 'rw' );
 has team_colors =>
   ( is => 'ro', default => sub { { 1 => [ .9, .9, .9, 1 ], 2 => [ .9, .7, .2, 1 ], 3 => [ .2, .8, 1, 1 ] } } );
 
+my %trails;
+
 1;
 
 sub _build_pryo {
@@ -256,6 +258,8 @@ sub render_world {
             $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
               for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };
 
+            my $max_trail = 22;
+
             for my $flier ( values %actors ) {
                 $self->send_sprite_data(
                     location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
@@ -273,6 +277,39 @@ sub render_world {
                         scale    => 1.5,
                     )
                 );
+
+                if ( !$flier->{is_bullet} ) {
+                    my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
+                    push @{ $trail->{segments} }, [ $flier->{x}, $flier->{y} ];
+                    shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
+                }
+            }
+
+            for my $trail ( values %trails ) {
+                if ( !$actors{ $trail->{id} } ) {
+                    shift @{ $trail->{segments} };
+                    if ( !@{ $trail->{segments} } ) {
+                        delete $trails{ $trail->{id} };
+                        next;
+                    }
+                }
+
+                my @color = @{ $c->{ $trail->{team} } };
+                $_++ for @color;
+                $color[3] = 0;
+
+                for my $i ( 0 .. $#{ $trail->{segments} } - 2 ) {
+                    my $segment = $trail->{segments}[$i];
+                    $color[3] += 1 / $max_trail;
+                    $self->send_sprite_data(
+                        location =>
+                          [ ( $segment->[0] - $cam->{x} ) / $self->w, ( $segment->[1] - $cam->{y} ) / $self->h ],
+                        color    => \@color,
+                        rotation => 0,
+                        scale    => 0.5,
+                        texture  => "blob",
+                    );
+                }
             }
         }
     );
