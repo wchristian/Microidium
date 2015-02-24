@@ -198,6 +198,9 @@ sub with_sprite_setup {
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
+    glVertexAttribPointerARB_c $attribs->{vertex_pos}, 3, GL_FLOAT, GL_FALSE, 0, 0;
+    glVertexAttribPointerARB_c $attribs->{tex_coord},  2, GL_FLOAT, GL_FALSE, 0, 18 * 4;
+
     $code->( @args );
 
     glDisable GL_BLEND;
@@ -222,10 +225,6 @@ sub send_sprite_data {
     glUniform3fARB $uniforms->{offset},   map 1 * $_, @{ $args{location} };
     glUniform1fARB $uniforms->{rotation}, deg2rad $args{rotation};
     glUniform1fARB $uniforms->{scale},    $args{scale};
-
-    my $attribs = $self->attribs->{sprites};
-    glVertexAttribPointerARB_c $attribs->{vertex_pos}, 3, GL_FLOAT, GL_FALSE, 0, 0;
-    glVertexAttribPointerARB_c $attribs->{tex_coord},  2, GL_FLOAT, GL_FALSE, 0, 18 * 4;
 
     glDrawArrays GL_TRIANGLES, 0, 6;
 
