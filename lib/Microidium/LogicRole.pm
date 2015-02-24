@@ -132,7 +132,8 @@ sub modify_actors {
         my $actor      = $old_actors->{$id};
         my $input_meth = $actor->{input};
         my $input      = $self->$input_meth( $actor );
-        my @c          = ( $actor, $new_actors->{$id}, $new_game_state, $input );
+        $self->apply_inputs( $new_actors->{$id}, $input );
+        my @c = ( $actor, $new_actors->{$id}, $new_game_state );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
@@ -218,8 +219,17 @@ sub simple_ai_step {
     return { turn_left => $turn_left, turn_right => $turn_right, thrust => $thrust, fire => $fire };
 }
 
+sub apply_inputs {
+    my ( $self, $new_player, $client_state ) = @_;
+    $new_player->{is_thrusting}     = $client_state->{thrust};
+    $new_player->{is_turning_left}  = $client_state->{turn_left};
+    $new_player->{is_turning_right} = $client_state->{turn_right};
+    $new_player->{is_firing}        = $client_state->{fire};
+    return;
+}
+
 sub apply_translation_forces {
-    my ( $self, $old_player, $new_player, $new_game_state, $client_state ) = @_;
+    my ( $self, $old_player, $new_player, $new_game_state ) = @_;
 
     my $x_speed_delta = 0;
     my $y_speed_delta = 0;
@@ -227,11 +237,11 @@ sub apply_translation_forces {
     my $old_game_state = $self->game_state;
     my $stalled = ( $old_player->{y} < $old_game_state->{floor} or $old_player->{y} > $old_game_state->{ceiling} );
     my $gravity = $old_game_state->{gravity};
-    $gravity *= $old_player->{grav_cancel} if $client_state->{thrust} and !$stalled;
+    $gravity *= $old_player->{grav_cancel} if $new_player->{is_thrusting} and !$stalled;
     $gravity *= -1 if $old_player->{y} < $old_game_state->{floor};
     $y_speed_delta += $gravity;
 
-    if ( $client_state->{thrust} ) {
+    if ( $new_player->{is_thrusting} ) {
         my $rad_rot      = deg2rad $old_player->{rot};
         my $thrust_power = $old_player->{thrust_power};
         $thrust_power = $old_player->{thrust_stall} if $stalled;
@@ -257,12 +267,12 @@ sub apply_translation_forces {
 }
 
 sub apply_rotation_forces {
-    my ( $self, $old_player, $new_player, $new_game_state, $client_state ) = @_;
-    return if !$client_state->{turn_left} and !$client_state->{turn_right};
+    my ( $self, $old_player, $new_player, $new_game_state ) = @_;
+    return if !$new_player->{is_turning_left} and !$new_player->{is_turning_right};
 
-    my $sign = $client_state->{turn_right} ? 1 : -1;
+    my $sign = $new_player->{is_turning_right} ? 1 : -1;
     my $turn_speed = $old_player->{turn_speed};
-    $turn_speed *= $old_player->{turn_damp} if $client_state->{thrust};
+    $turn_speed *= $old_player->{turn_damp} if $new_player->{is_thrusting};
     $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
     $new_player->{rot} += 360 if $new_player->{rot} < 0;
     $new_player->{rot} -= 360 if $new_player->{rot} > 360;
@@ -270,10 +280,10 @@ sub apply_rotation_forces {
 }
 
 sub apply_weapon_effects {
-    my ( $self, $old_player, $new_player, $new_game_state, $input ) = @_;
+    my ( $self, $old_player, $new_player, $new_game_state ) = @_;
     return if $old_player->{is_bullet};
     $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
-    if ( $input->{fire} and $old_player->{gun_heat} <= 0 ) {
+    if ( $new_player->{is_firing} and $old_player->{gun_heat} <= 0 ) {
         my %bullet = (
             max_speed     => 20,
             thrust_power  => 9,
@@ -310,7 +320,7 @@ sub add_event {
 }
 
 sub apply_location_damage {
-    my ( $self, $actor, $new_actor, $new_game_state, $input ) = @_;
+    my ( $self, $actor, $new_actor, $new_game_state ) = @_;
     return if !$actor->{hp_loss_speed};
 
     my $game_state = $self->game_state;
@@ -323,7 +333,7 @@ sub apply_location_damage {
 }
 
 sub apply_collision_effects {
-    my ( $self, $actor, $new_actor, $new_game_state, $input ) = @_;
+    my ( $self, $actor, $new_actor, $new_game_state ) = @_;
     for my $other ( $self->collisions( $actor, $self->game_state->{actors} ) ) {
         $new_actor->{hp} -= 1 if $other->{team} != $actor->{team};
     }
