@@ -171,8 +171,8 @@ sub render_world {
     my $cam          = $self->client_state->{camera};
 
     if ( $player_actor ) {
-        my $dist = 50 + ( 650 * $self->client_state->{thrust} );
-        $dist -= 300 if $self->client_state->{turn_left} or $self->client_state->{turn_right};
+        my $dist = 50 + ( 650 * $player_actor->{is_thrusting} );
+        $dist -= 300 if $player_actor->{is_turning_left} or $player_actor->{is_turning_right};
         $dist = 0 if $dist < 0;
         my $cam_x_target = $player_actor->{x} + ( $dist * sin deg2rad $player_actor->{rot} );
         my $cam_y_target = $player_actor->{y} + ( $dist * cos deg2rad $player_actor->{rot} );
