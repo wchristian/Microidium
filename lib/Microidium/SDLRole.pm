@@ -15,7 +15,7 @@ use SDL::Mixer;
 use Time::HiRes 'time';
 use curry;
 use Clone 'clone';
-use Acme::MITHALDU::BleedingOpenGL ':all';
+use Acme::MITHALDU::BleedingOpenGL ':functions';
 use IO::All -binary;
 use OpenGL::Image;
 use Math::Trig qw' rad2deg ';
@@ -35,6 +35,20 @@ has current_frame_time => ( is => 'rw', default => sub { time } );
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
 has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos );
+
+BEGIN {
+    my @gl_constants = qw(
+      GL_TEXTURE_2D GL_FLOAT GL_FALSE GL_TRIANGLES GL_COLOR_BUFFER_BIT
+      GL_TEXTURE0 GL_ARRAY_BUFFER GL_BLEND GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+      GL_ARRAY_BUFFER GL_STATIC_DRAW GL_TEXTURE0 GL_TEXTURE_MIN_FILTER
+      GL_TEXTURE_MAG_FILTER GL_NEAREST GL_VERTEX_SHADER GL_FRAGMENT_SHADER
+      GL_COMPILE_STATUS GL_LINK_STATUS
+    );
+    for my $name ( @gl_constants ) {
+        my $val = eval "Acme::MITHALDU::BleedingOpenGL::$name()";
+        eval "sub $name () { $val }";
+    }
+}
 
 1;
 
