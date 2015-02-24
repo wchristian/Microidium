@@ -314,11 +314,13 @@ sub render_world {
         }
     );
 
+    my $audio_pickup = $player_actor ? $player_actor : $cam;
+
     my @new_bullets = grep $_->{is_bullet}, map $actors{$_}, @{ $game_state->{new_actors} };
-    $self->play_sound( "shot", $_, $cam, 3 ) for @new_bullets;
+    $self->play_sound( "shot", $_, $audio_pickup, 3 ) for @new_bullets;
 
     my @dead_planes = grep !$_->{is_bullet}, @{ $game_state->{removed_actors} };
-    $self->play_sound( "death", $_, $cam, 3 ) for @dead_planes;
+    $self->play_sound( "death", $_, $audio_pickup, 3 ) for @dead_planes;
 
     return;
 }
