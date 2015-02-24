@@ -80,7 +80,7 @@ sub plan_bot_respawns {
         gun_use_heat => 60,
         input        => "computer_ai",
         team         => $team,
-        hp           => 1,
+        hp           => 2,
     );
     $self->plan_actor_addition( $new_game_state, \%stats );
 
