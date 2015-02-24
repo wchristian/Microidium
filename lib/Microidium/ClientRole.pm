@@ -195,7 +195,7 @@ sub render_world {
         next if $event->{type} ne "bullet_fired";
         my $actor = $game_state->{actors}{ $event->{owner} };
         next if !$actor->{player_id};
-        next if $actor->{player_id} != $self->local_player_id;
+        next if $actor->{player_id} != $self->player_id;
         $spring{mass_pos}[$_] += -10 + rand 20 for 0 .. 1;
     }
 
