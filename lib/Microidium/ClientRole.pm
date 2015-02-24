@@ -282,6 +282,19 @@ sub render_world {
                     my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
                     push @{ $trail->{segments} }, [ $flier->{x}, $flier->{y} ];
                     shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
+
+                    my %flames = qw(
+                      is_thrusting     thrust_flame
+                      is_turning_right thrust_right_flame
+                      is_turning_left  thrust_left_flame
+                    );
+                    $self->send_sprite_data(
+                        location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
+                        color    => $c->{ $flier->{team} },
+                        rotation => $flier->{rot},
+                        texture  => $flames{$_},
+                        scale    => 1.5,
+                    ) for grep { $flier->{$_} } keys %flames;
                 }
             }
 
