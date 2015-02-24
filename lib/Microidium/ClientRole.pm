@@ -155,6 +155,9 @@ sub connect {
     return;
 }
 
+my @thrusts = qw( is_thrusting is_turning_left is_turning_right );
+my %cam_effect_accums = map( ( $_ => [ ( 0 ) x 30 ] ), @thrusts );
+
 my %spring = (
     anchor_pos => -50,
     length     => 50,
@@ -171,8 +174,14 @@ sub render_world {
     my $cam          = $self->client_state->{camera};
 
     if ( $player_actor ) {
-        my $dist = 50 + ( 650 * $player_actor->{is_thrusting} );
-        $dist -= 300 if $player_actor->{is_turning_left} or $player_actor->{is_turning_right};
+        for my $thrust ( @thrusts ) {
+            push @{ $cam_effect_accums{$thrust} }, $player_actor->{$thrust};
+            shift @{ $cam_effect_accums{$thrust} };
+        }
+        my %cam_effects = map( { $_ => ( ( grep { $_ } @{ $cam_effect_accums{$_} } ) > 20 ) } @thrusts );
+
+        my $dist = 50 + ( 650 * $cam_effects{is_thrusting} );
+        $dist -= 300 if $cam_effects{is_turning_left} or $cam_effects{is_turning_right};
         $dist = 0 if $dist < 0;
         my $cam_x_target = $player_actor->{x} + ( $dist * sin deg2rad $player_actor->{rot} );
         my $cam_y_target = $player_actor->{y} + ( $dist * cos deg2rad $player_actor->{rot} );
@@ -269,7 +278,9 @@ sub render_world {
                         rotation => 0,
                         scale    => .3,
                         texture  => "bullet",
-                        ( $flier->{blink_until} and $flier->{blink_until} >= time ) ? ( color => [ 0, 0, 0, 1 ] ) : (),
+                        ( $flier->{blink_until} and $flier->{blink_until} >= time )
+                        ? ( color => [ 0, 0, 0, 1 ] )
+                        : (),
                       )
                     : (
                         rotation => $flier->{rot},
