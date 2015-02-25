@@ -273,12 +273,6 @@ sub print_text_2D {
     my $uv_ogl   = OpenGL::Array->new_list( GL_FLOAT, @uvs );
 
     my $uniforms = $self->uniforms->{text};
-    my $attribs  = $self->attribs->{text};
-
-    glBindBufferARB GL_ARRAY_BUFFER,   $self->vbos->{text_vertices};
-    glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
-    glBindBufferARB GL_ARRAY_BUFFER,   $self->vbos->{text_uvs};
-    glBufferDataARB_p GL_ARRAY_BUFFER, $uv_ogl, GL_STATIC_DRAW;
 
     glUseProgramObjectARB $self->shaders->{text};
 
@@ -288,12 +282,16 @@ sub print_text_2D {
 
     glUniform3fARB $uniforms->{color}, @{$color};
 
+    my $attribs = $self->attribs->{text};
+
     glEnableVertexAttribArrayARB $attribs->{vertexPosition_screenspace};
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_vertices};
+    glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
     glVertexAttribPointerARB_c $attribs->{vertexPosition_screenspace}, 2, GL_FLOAT, GL_FALSE, 0, 0;
 
     glEnableVertexAttribArrayARB $attribs->{vertexUV};
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_uvs};
+    glBufferDataARB_p GL_ARRAY_BUFFER, $uv_ogl, GL_STATIC_DRAW;
     glVertexAttribPointerARB_c $attribs->{vertexUV}, 2, GL_FLOAT, GL_FALSE, 0, 0;
 
     glEnable GL_BLEND;
