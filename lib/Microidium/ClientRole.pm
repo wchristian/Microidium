@@ -385,7 +385,15 @@ sub render_ui {
         ( map $player_actor->{$_}, qw( x y rot ) ),
         ( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )**0.5
     ) if $player_actor;
-    $self->print_text_2D( [ 0, 20 ], "FPS: " . $self->fps );
+    $self->print_text_2D(
+        [ 0, 20 ],
+        sprintf "FPS / Frame / Render / World / UI: %5.1f / %6.2f ms / %6.2f ms / %6.2f ms / %6.2f ms",
+        $self->fps,
+        $self->elapsed * 1000,
+        $self->render_time * 1000,
+        $self->world_time * 1000,
+        $self->ui_time * 1000,
+    );
     $self->print_text_2D( [ 0, 10 ], "Frame: " . $self->frame );
     $self->print_text_2D( [], "Tick: " . $game_state->{tick} ) if $game_state->{tick};
 
