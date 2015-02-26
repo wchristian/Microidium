@@ -178,12 +178,11 @@ sub init_sprites {
 sub init_text_2D {
     my ( $self, $path ) = @_;
 
-    $self->new_vbo( $_ ) for qw( text_vertices text_uvs );
+    $self->new_vbo( $_ ) for qw( text_vertices );
 
     $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag ) );
-    $self->attribs->{text}{$_} = $self->glGetAttribLocationARB_p_safe( "text", $_ )
-      for qw( vertexPosition_screenspace vertexUV );
     $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ ) for qw( texture color );
+    $self->attribs->{text}{$_} = $self->glGetAttribLocationARB_p_safe( "text", $_ ) for qw( vertex );
 
     $self->textures->{text} = $self->load_texture( $path );
 
@@ -280,9 +279,6 @@ sub print_text_2D {
         my @vertex_up_right   = ( $x + $i * $size_x + $size_x, $y + $size );
         my @vertex_down_right = ( $x + $i * $size_x + $size_x, $y );
         my @vertex_down_left = ( $x + $i * $size_x, $y );
-        push @vertices,
-          @vertex_up_left,    @vertex_down_left, @vertex_up_right,
-          @vertex_down_right, @vertex_up_right,  @vertex_down_left;
 
         my $char = ord $chars[$i];
         my $uv_x = ( $char % 16 ) / 16;
@@ -292,13 +288,15 @@ sub print_text_2D {
         my @uv_up_right   = ( $uv_x + 1 / 16, $uv_y );
         my @uv_down_right = ( $uv_x + 1 / 16, $uv_y + 1 / 16 );
         my @uv_down_left = ( $uv_x, $uv_y + 1 / 16 );
-        push @uvs,    #
-          @uv_up_left,    @uv_down_left, @uv_up_right,    #
-          @uv_down_right, @uv_up_right,  @uv_down_left;
-    }
 
-    my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
-    my $uv_ogl   = OpenGL::Array->new_list( GL_FLOAT, @uvs );
+        push @vertices,    #
+          @vertex_up_left,    @uv_up_left,      #
+          @vertex_down_left,  @uv_down_left,
+          @vertex_up_right,   @uv_up_right,
+          @vertex_down_right, @uv_down_right,
+          @vertex_up_right,   @uv_up_right,
+          @vertex_down_left,  @uv_down_left;
+    }
 
     my $uniforms = $self->uniforms->{text};
 
@@ -312,25 +310,20 @@ sub print_text_2D {
 
     my $attribs = $self->attribs->{text};
 
-    glEnableVertexAttribArrayARB $attribs->{vertexPosition_screenspace};
+    glEnableVertexAttribArrayARB $attribs->{vertex};
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_vertices};
+    my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
     glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
-    glVertexAttribPointerARB_c $attribs->{vertexPosition_screenspace}, 2, GL_FLOAT, GL_FALSE, 0, 0;
-
-    glEnableVertexAttribArrayARB $attribs->{vertexUV};
-    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_uvs};
-    glBufferDataARB_p GL_ARRAY_BUFFER, $uv_ogl, GL_STATIC_DRAW;
-    glVertexAttribPointerARB_c $attribs->{vertexUV}, 2, GL_FLOAT, GL_FALSE, 0, 0;
+    glVertexAttribPointerARB_c $attribs->{vertex}, 4, GL_FLOAT, GL_FALSE, 0, 0;
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
-    glDrawArrays GL_TRIANGLES, 0, scalar @vertices;
+    glDrawArrays GL_TRIANGLES, 0, scalar( @vertices ) / 2;
 
     glDisable GL_BLEND;
 
-    glDisableVertexAttribArrayARB $attribs->{vertexPosition_screenspace};
-    glDisableVertexAttribArrayARB $attribs->{vertexUV};
+    glDisableVertexAttribArrayARB $attribs->{vertex};
 
     return;
 }
