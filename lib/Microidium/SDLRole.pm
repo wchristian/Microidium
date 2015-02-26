@@ -36,6 +36,7 @@ has $_ => ( is => 'rw', default => sub { 0 } ) for qw( render_time world_time ui
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
 has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos );
+has sprites => ( is => 'rw', default => sub { {} } );
 
 BEGIN {
     my @gl_constants = qw(
@@ -43,8 +44,9 @@ BEGIN {
       GL_TEXTURE0 GL_ARRAY_BUFFER GL_BLEND GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
       GL_ARRAY_BUFFER GL_STATIC_DRAW GL_TEXTURE0 GL_TEXTURE_MIN_FILTER
       GL_TEXTURE_MAG_FILTER GL_NEAREST GL_VERTEX_SHADER GL_FRAGMENT_SHADER
-      GL_COMPILE_STATUS GL_LINK_STATUS
+      GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
     );
+
     for my $name ( @gl_constants ) {
         my $val = eval "Acme::MITHALDU::BleedingOpenGL::$name()";
         eval "sub $name () { $val }";
@@ -161,13 +163,12 @@ sub glGetUniformLocationARB_p_safe {
 sub init_sprites {
     my ( $self ) = @_;
 
-    $self->load_vertex_buffer( "sprite", $self->sprite_vbo_data );
+    $self->new_vbo( $_ ) for qw( sprite );
 
-    $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag ) );
-    $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
-      for qw( offset rotation scale color texture );
+    $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag geom ) );
+    $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ ) for qw( texture );
     $self->attribs->{sprites}{$_} = $self->glGetAttribLocationARB_p_safe( "sprites", $_ )
-      for qw( vertex_pos tex_coord );
+      for qw( color offset rotation scale );
 
     $self->textures->{$_} = $self->load_texture( dfile "$_.tga" )
       for qw( player1 bullet blob thrust_flame thrust_right_flame thrust_left_flame );
@@ -213,28 +214,55 @@ sub render_sprite {
 sub with_sprite_setup {
     my ( $self, $code, @args ) = @_;
 
+    $self->sprites( {} );
+    $code->( @args );
+    $self->with_sprite_setup_render;
+
+    return;
+}
+
+sub with_sprite_setup_render {
+    my ( $self ) = @_;
+
     glUseProgramObjectARB $self->shaders->{sprites};
 
     glActiveTextureARB GL_TEXTURE0;
 
     my $attribs = $self->attribs->{sprites};
-    glEnableVertexAttribArrayARB $attribs->{vertex_pos};
-    glEnableVertexAttribArrayARB $attribs->{tex_coord};
+    glEnableVertexAttribArrayARB $attribs->{color};
+    glEnableVertexAttribArrayARB $attribs->{offset};
+    glEnableVertexAttribArrayARB $attribs->{rotation};
+    glEnableVertexAttribArrayARB $attribs->{scale};
 
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{sprite};
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
-    glVertexAttribPointerARB_c $attribs->{vertex_pos}, 3, GL_FLOAT, GL_FALSE, 0, 0;
-    glVertexAttribPointerARB_c $attribs->{tex_coord},  2, GL_FLOAT, GL_FALSE, 0, 18 * 4;
+    my $stride = 4 * ( 4 + 3 + 1 + 1 );    # bytes * counts
+    glVertexAttribPointerARB_c $attribs->{color},    4, GL_FLOAT, GL_FALSE, $stride, 0;
+    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
 
-    $code->( @args );
+    my $uniforms = $self->uniforms->{sprites};
+    for my $tex ( keys %{ $self->sprites } ) {
+        glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
+        glUniform1iARB $uniforms->{texture}, 0;
+        my @vertices =
+          map { @{ $_->{color} }, @{ $_->{location} }, $_->{rotation}, $_->{scale} } @{ $self->sprites->{$tex} };
+        my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @vertices );
+        glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
+
+        glDrawArrays GL_POINTS, 0, scalar @vertices;
+    }
 
     glDisable GL_BLEND;
 
-    glDisableVertexAttribArrayARB $attribs->{vertex_pos};
-    glDisableVertexAttribArrayARB $attribs->{tex_coord};
+    glDisableVertexAttribArrayARB $attribs->{color};
+    glDisableVertexAttribArrayARB $attribs->{offset};
+    glDisableVertexAttribArrayARB $attribs->{rotation};
+    glDisableVertexAttribArrayARB $attribs->{scale};
 
     return;
 }
@@ -244,18 +272,7 @@ sub send_sprite_data {
     $args{color} ||= [ 1, 1, 1, 1 ];
     $args{scale} //= 1;
     $args{location}[2] //= 0;
-
-    my $uniforms = $self->uniforms->{sprites};
-    glBindTexture GL_TEXTURE_2D, $self->textures->{ $args{texture} };
-    glUniform1iARB $uniforms->{texture}, 0;
-
-    glUniform4fARB $uniforms->{color},    @{ $args{color} };
-    glUniform3fARB $uniforms->{offset},   map 1 * $_, @{ $args{location} };
-    glUniform1fARB $uniforms->{rotation}, deg2rad $args{rotation};
-    glUniform1fARB $uniforms->{scale},    $args{scale};
-
-    glDrawArrays GL_TRIANGLES, 0, 6;
-
+    push @{ $self->sprites->{ $args{texture} } }, \%args;
     return;
 }
 
@@ -328,26 +345,6 @@ sub print_text_2D {
     return;
 }
 
-sub sprite_vbo_data {
-    return (
-        # vertex coords
-        -0.1, 0.1,  0,
-        0.1,  -0.1, 0,
-        -0.1, -0.1, 0,
-        -0.1, 0.1,  0,
-        0.1,  0.1,  0,
-        0.1,  -0.1, 0,
-
-        # texture coords
-        0, 0,
-        1, 1,
-        0, 1,
-        0, 0,
-        1, 0,
-        1, 1,
-    );
-}
-
 sub load_texture {
     my ( $self, $path ) = @_;
 
@@ -366,15 +363,22 @@ sub load_texture {
 }
 
 sub load_shader_set {
-    my ( $self, $vert, $frag ) = @_;
+    my ( $self, $vert, $frag, $geom ) = @_;
     my $t = time;
+    my $geom_id;
+
+    if ( $geom ) {
+        $geom_id = $self->LoadShader( GL_GEOMETRY_SHADER, $geom );
+        say "load geom:       ", time - $t, " s";
+        $t = time;
+    }
     my $vert_id = $self->LoadShader( GL_VERTEX_SHADER, $vert );
     say "load vert:       ", time - $t, " s";
     $t = time;
     my $frag_id = $self->LoadShader( GL_FRAGMENT_SHADER, $frag );
     say "load frag:       ", time - $t, " s";
     $t = time;
-    my $program_id = $self->CreateProgram( $vert_id, $frag_id );
+    my $program_id = $self->CreateProgram( defined( $geom_id ) ? $geom_id : (), $vert_id, $frag_id );
     say "compile program: ", time - $t, " s";
     return $program_id;
 }

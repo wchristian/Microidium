@@ -1,13 +1,14 @@
 #version 330
 
-layout (location = 0) in vec3 vertex_pos;
-layout (location = 1) in vec2 tex_coord;
+layout (location = 0) in vec4 color;
+layout (location = 1) in vec3 offset;
+layout (location = 2) in float rotation;
+layout (location = 3) in float scale;
 
-uniform vec3 offset;
-uniform float rotation;
-uniform float scale;
-
-out vec2 TexCoord0;
+out VS_OUT {
+    vec4 color;
+    mat4 matrix;
+} vs_out;
 
 void main() {
     mat4 translate_mat = mat4(
@@ -17,11 +18,12 @@ void main() {
         offset.x,   offset.y,   offset.z,   1.0
     );
 
+    float r_rotation = radians( rotation );
     mat4 rotate_mat = mat4(
-        cos(rotation),  -sin(rotation),  0.0,  0.0,
-        sin(rotation),  cos(rotation),   0.0,  0.0,
-        0.0,            0.0,             1.0,  0.0,
-        0.0,            0.0,             0.0,  1.0
+        cos(r_rotation),  -sin(r_rotation),  0.0,  0.0,
+        sin(r_rotation),  cos(r_rotation),   0.0,  0.0,
+        0.0,              0.0,               1.0,  0.0,
+        0.0,              0.0,               0.0,  1.0
     );
 
     mat4 scale_mat = mat4(
@@ -44,7 +46,6 @@ void main() {
         0.0,                                 0.0,              2.0 * far * near / range,     0.0
     );
 
-    gl_Position = perspmat * translate_mat * rotate_mat * scale_mat * vec4( vertex_pos.x, vertex_pos.y, 0, 1.0 );
-
-    TexCoord0 = tex_coord;
+    vs_out.color = color;
+    vs_out.matrix = perspmat * translate_mat * rotate_mat * scale_mat;
 }
