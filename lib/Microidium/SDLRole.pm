@@ -141,16 +141,33 @@ sub fps {
     return $elapsed ? 1 / $elapsed : 999;
 }
 
+sub glGetAttribLocationARB_p_safe {
+    my ( $self, $shader_name, $attrib_name ) = @_;
+    my $shader = $self->shaders->{$shader_name};
+    my $ret = glGetAttribLocationARB_p $shader, $attrib_name;
+    die "Could not find attribute '$attrib_name' in '$shader_name'" if $ret == -1;
+    return $ret;
+}
+
+sub glGetUniformLocationARB_p_safe {
+    my ( $self, $shader_name, $attrib_name ) = @_;
+    my $shader = $self->shaders->{$shader_name};
+    my $ret = glGetUniformLocationARB_p $shader, $attrib_name;
+    die "Could not find uniform '$attrib_name' in '$shader_name'" if $ret == -1;
+    return $ret;
+}
+
 # TODO: see https://github.com/nikki93/opengl/blob/master/main.cpp
 sub init_sprites {
     my ( $self ) = @_;
 
     $self->load_vertex_buffer( "sprite", $self->sprite_vbo_data );
 
-    my $shader = $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag ) );
-    $self->uniforms->{sprites}{$_} = glGetUniformLocationARB_p $shader, $_
-      for qw( time offset rotation scale color texture );
-    $self->attribs->{sprites}{$_} = glGetAttribLocationARB_p $shader, $_ for qw( vertex_pos tex_coord );
+    $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag ) );
+    $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
+      for qw( offset rotation scale color texture );
+    $self->attribs->{sprites}{$_} = $self->glGetAttribLocationARB_p_safe( "sprites", $_ )
+      for qw( vertex_pos tex_coord );
 
     $self->textures->{$_} = $self->load_texture( dfile "$_.tga" )
       for qw( player1 bullet blob thrust_flame thrust_right_flame thrust_left_flame );
@@ -163,9 +180,10 @@ sub init_text_2D {
 
     $self->new_vbo( $_ ) for qw( text_vertices text_uvs );
 
-    my $shader = $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag ) );
-    $self->uniforms->{text}{$_} = glGetUniformLocationARB_p $shader, $_ for qw( texture color );
-    $self->attribs->{text}{$_}  = glGetAttribLocationARB_p $shader,  $_ for qw( vertexPosition_screenspace vertexUV );
+    $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag ) );
+    $self->attribs->{text}{$_} = $self->glGetAttribLocationARB_p_safe( "text", $_ )
+      for qw( vertexPosition_screenspace vertexUV );
+    $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ ) for qw( texture color );
 
     $self->textures->{text} = $self->load_texture( $path );
 
