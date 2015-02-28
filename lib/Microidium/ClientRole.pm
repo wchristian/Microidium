@@ -183,6 +183,7 @@ sub render_world {
         my $dist = 50 + ( 650 * $cam_effects{is_thrusting} );
         $dist -= 300 if $cam_effects{is_turning_left} or $cam_effects{is_turning_right};
         $dist = 0 if $dist < 0;
+        $dist *= $player_actor->{speed} / $player_actor->{max_speed};
         my $cam_x_target = $player_actor->{x} + ( $dist * sin deg2rad $player_actor->{rot} );
         my $cam_y_target = $player_actor->{y} + ( $dist * cos deg2rad $player_actor->{rot} );
 

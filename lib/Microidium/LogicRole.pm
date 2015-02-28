@@ -73,6 +73,7 @@ sub plan_bot_respawns {
         turn_damp        => 0.2 + rand 0.8,
         rot              => 0,
         thrust_power     => 0.2 + rand,
+        speed            => 0,
         max_speed        => 8 + rand 20,
         thrust_stall     => 0.05,
         grav_cancel      => 0.3,
@@ -111,6 +112,7 @@ sub plan_player_respawns {
             turn_damp        => 0.5,
             rot              => 0,
             thrust_power     => 1,
+            speed            => 0,
             max_speed        => 10,
             thrust_stall     => 0.05,
             grav_cancel      => 0.3,
@@ -269,8 +271,8 @@ sub apply_translation_forces {
     $new_player->{x_speed} = $old_player->{x_speed} + $x_speed_delta;
     $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
 
-    my $max_speed    = $old_player->{max_speed};
-    my $player_speed = ( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 )**0.5;
+    my $max_speed = $old_player->{max_speed};
+    my $player_speed = $new_player->{speed} = ( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 )**0.5;
     if ( $player_speed > $max_speed ) {
         my $mult = $max_speed / $player_speed;
         $new_player->{x_speed} *= $mult;
