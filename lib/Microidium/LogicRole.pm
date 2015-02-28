@@ -69,7 +69,7 @@ sub plan_bot_respawns {
         y                => min( 2800, max( 200, $bot_start[1] - 1500 + rand 3000 ) ),
         x_speed          => 0,
         y_speed          => 0,
-        turn_speed       => 3 + rand 5,
+        turn_speed       => 4 + rand 6,
         turn_damp        => 0.2 + rand 0.8,
         rot              => 0,
         thrust_power     => 0.2 + rand,
