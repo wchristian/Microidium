@@ -75,6 +75,7 @@ sub _build_app {
         gl             => 1,
         width          => $self->width,
         height         => $self->height,
+        min_t          => 1 / 62,
     );
 
     $self->init_sprites;
