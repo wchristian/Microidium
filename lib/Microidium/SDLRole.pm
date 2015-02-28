@@ -41,6 +41,7 @@ has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_
 
 has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos );
 has sprites          => ( is => 'rw', default => sub { {} } );
+has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
 
 BEGIN {
@@ -225,6 +226,7 @@ sub with_sprite_setup {
     my ( $self, $code, @args ) = @_;
 
     $self->sprites( {} );
+    $self->sprite_count( 0 );
     $code->( @args );
     $self->with_sprite_setup_render;
 
@@ -268,6 +270,7 @@ sub with_sprite_setup_render {
 
         my $count = @vertices / $value_count;
         glDrawArrays GL_POINTS, 0, $count;
+        $self->sprite_count( $self->sprite_count + $count );
     }
 
     glDisable GL_BLEND;

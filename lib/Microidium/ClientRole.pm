@@ -368,6 +368,8 @@ sub render_ui {
     my $player_actor = $self->local_player_actor;
     $self->print_text_2D( [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n" );
 
+    $self->print_text_2D( [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count );
+
     $self->print_text_2D(
         [ 0, 50 ],
         sprintf "Audio channels:|%s|",
