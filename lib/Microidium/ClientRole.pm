@@ -388,8 +388,8 @@ sub render_ui {
     $self->print_text_2D(
         [ 0, 20 ],
         sprintf "FPS / Frame / Render / World / UI: %5.1f / %6.2f ms / %6.2f ms / %6.2f ms / %6.2f ms",
-        $self->fps,
-        $self->elapsed * 1000,
+        1 / $self->frame_time,
+        $self->frame_time * 1000,
         $self->render_time * 1000,
         $self->world_time * 1000,
         $self->ui_time * 1000,

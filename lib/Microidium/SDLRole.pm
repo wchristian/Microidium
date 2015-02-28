@@ -29,6 +29,8 @@ use Moo::Role;
 has app => ( is => 'lazy', handles => [qw( run stop w h sync )] );
 
 has frame              => ( is => 'rw', default => sub { 0 } );
+has fps                => ( is => 'rw', default => sub { 0 } );
+has frame_time         => ( is => 'rw', default => sub { 0 } );
 has last_frame_time    => ( is => 'rw', default => sub { time } );
 has current_frame_time => ( is => 'rw', default => sub { time } );
 has $_ => ( is => 'rw', default => sub { 0 } ) for qw( render_time world_time ui_time );
@@ -110,8 +112,9 @@ sub on_show {
     $self->last_frame_time( $self->current_frame_time );
     my $now = time;
     $self->current_frame_time( $now );
+    $self->smooth_update( frame_time => $now - $self->last_frame_time );
     $self->render;
-    $self->render_time( time - $now );
+    $self->smooth_update( render_time => time - $now );
     $self->sync;
     return;
 }
@@ -125,22 +128,20 @@ sub render {
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_world( $game_state );    # TODO: render to texture
-    $self->world_time( time - $now );
+    $self->smooth_update( world_time => time - $now );
     my $now2 = time;
     $self->render_ui( $game_state );
-    $self->ui_time( time - $now2 );
+    $self->smooth_update( ui_time => time - $now2 );
 
     return;
 }
 
-sub elapsed {
-    my ( $self ) = @_;
-    return $self->current_frame_time - $self->last_frame_time;
-}
-
-sub fps {
-    my $elapsed = shift->elapsed;
-    return $elapsed ? 1 / $elapsed : 999;
+sub smooth_update {
+    my ( $self, $attrib, $new ) = @_;
+    my $old  = $self->$attrib;
+    my $diff = $new - $old;
+    $self->$attrib( $old + $diff * .08 );
+    return;
 }
 
 sub glGetAttribLocationARB_p_safe {
