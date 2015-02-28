@@ -12,7 +12,6 @@ out vec4 f_color;
 out vec2 f_uv;
 
 void main() {
-    vec4 pos = gl_in[0].gl_Position;
     mat4 matrix = gs_in[0].matrix;
     f_color = gs_in[0].color;
     

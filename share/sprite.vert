@@ -5,17 +5,23 @@ layout (location = 1) in vec3 offset;
 layout (location = 2) in float rotation;
 layout (location = 3) in float scale;
 
+uniform vec2 screen;
+uniform vec2 camera;
+
 out VS_OUT {
     vec4 color;
     mat4 matrix;
 } vs_out;
 
 void main() {
+    vec2 pos =  vec2( ( offset.x - camera.x ) / screen.x,
+                      ( offset.y - camera.y ) / screen.y );
+
     mat4 translate_mat = mat4(
-        1.0,        0.0,        0.0,        0.0,
-        0.0,        1.0,        0.0,        0.0,
-        0.0,        0.0,        1.0,        0.0,
-        offset.x,   offset.y,   offset.z,   1.0
+        1.0,     0.0,     0.0,        0.0,
+        0.0,     1.0,     0.0,        0.0,
+        0.0,     0.0,     1.0,        0.0,
+        pos.x,   pos.y,   offset.z,   1.0
     );
 
     float r_rotation = radians( rotation );
@@ -33,7 +39,7 @@ void main() {
         0.0,            0.0,            1.0,            1.0
     );
 
-    float aspect_ratio = 800.0 / 600.0; // w x h
+    float aspect_ratio = screen.x / screen.y; // w x h
     float near = 0.001;
     float far = 10000.0;
     float range = near - far;

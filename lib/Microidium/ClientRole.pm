@@ -230,8 +230,8 @@ sub render_world {
     my $STAR_SEED      = 0x9d2c5680;
     my $STAR_TILE_SIZE = 512;
 
-    my $w = $self->w;
-    my $h = $self->h;
+    my $w = $self->width;
+    my $h = $self->height;
     my $c = $self->team_colors;
 
     my %actors = %{ $game_state->{actors} };
@@ -248,7 +248,7 @@ sub render_world {
                 for ( my $i = $sx ; $i <= $w + $sx + ( $size * 15 ) ; $i += $size ) {
                     for ( my $j = $sy ; $j <= $h + $sy + ( $size * 9 ) ; $j += $size ) {
                         my $hash = mix( $STAR_SEED, $i, $j );
-                        for ( 1 .. 1 ) {
+                        for ( 1 .. 2 ) {
                             my $px = $i + ( $hash % $size );
                             $hash >>= 3;
                             my $py = $j + ( $hash % $size );
@@ -257,13 +257,7 @@ sub render_world {
                             $hash >>= 3;
                             my $color =
                               $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
-                            $self->send_sprite_data(
-                                location => [ ( $px - $cam->{x} ) / $self->w, ( $py - $cam->{y} ) / $self->h, $pz ],
-                                color    => $color,
-                                rotation => 0,
-                                scale    => 15,
-                                texture  => "blob",
-                            );
+                            $self->send_sprite_data( [ $px, $py, $pz + 0.01 ], $color, 0, 15, "blob", );
                         }
                     }
                 }
@@ -275,42 +269,41 @@ sub render_world {
             my $max_trail = 22;
 
             for my $flier ( values %actors ) {
-                $self->send_sprite_data(
-                    location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
-                    color => $c->{ $flier->{team} },
-                    $flier->{is_bullet}
-                    ? (
-                        rotation => 0,
-                        scale    => .3,
-                        texture  => "bullet",
-                        ( $flier->{blink_until} and $flier->{blink_until} >= time )
-                        ? ( color => [ 0, 0, 0, 1 ] )
-                        : (),
+                my @color = @{
+                    $flier->{is_bullet} ? (
+                        ( $flier->{blink_until} and $flier->{blink_until} >= time )    #
+                        ? [ 0, 0, 0, 1 ]
+                        : $c->{ $flier->{team} }
                       )
-                    : (
-                        rotation => $flier->{rot},
-                        texture  => "player1",
-                        scale    => 1.5,
-                    )
-                );
+                    : $c->{ $flier->{team} }
+                };
+                if (   $flier->{y} < $self->game_state->{floor}
+                    or $flier->{y} > $self->game_state->{ceiling} )
+                {
+                    $color[$_] *= 0.5 for 0 .. 2;
+                }
+                $self->send_sprite_data( [ $flier->{x}, $flier->{y}, ],
+                    $flier->{is_bullet}
+                    ? ( \@color, 0, .3, "bullet", )
+                    : ( \@color, $flier->{rot}, 1.5, "player1", ) );
 
                 if ( !$flier->{is_bullet} ) {
                     my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
-                    push @{ $trail->{segments} }, [ $flier->{x}, $flier->{y}, $flier->{is_thrusting} ? 1 : 0.3 ];
+                    push @{ $trail->{segments} },
+                      [ map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 ];
                     shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
 
+                    my @color = @{ $c->{ $flier->{team} } };
+                    $color[3] *= 0.2
+                      if $flier->{y} < $self->game_state->{floor}
+                      or $flier->{y} > $self->game_state->{ceiling};
                     my %flames = qw(
                       is_thrusting     thrust_flame
                       is_turning_right thrust_right_flame
                       is_turning_left  thrust_left_flame
                     );
-                    $self->send_sprite_data(
-                        location => [ ( $flier->{x} - $cam->{x} ) / $self->w, ( $flier->{y} - $cam->{y} ) / $self->h, ],
-                        color    => $c->{ $flier->{team} },
-                        rotation => $flier->{rot},
-                        texture  => $flames{$_},
-                        scale    => 1.5,
-                    ) for grep { $flier->{$_} } keys %flames;
+                    $self->send_sprite_data( [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, $flames{$_}, )
+                      for grep { $flier->{$_} } keys %flames;
                 }
             }
 
@@ -323,7 +316,7 @@ sub render_world {
                     }
                 }
 
-                my @color = @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
+                my @color = map { "$_" } @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
                 my $alpha = 0;
 
                 $_ *= 1.5 for @color;
@@ -331,14 +324,12 @@ sub render_world {
                 for my $i ( 0 .. $#{ $trail->{segments} } - 2 ) {
                     my $segment = $trail->{segments}[$i];
                     $alpha += 1 / $max_trail;
-                    $self->send_sprite_data(
-                        location =>
-                          [ ( $segment->[0] - $cam->{x} ) / $self->w, ( $segment->[1] - $cam->{y} ) / $self->h ],
-                        color    => [ @color, $segment->[2] * $alpha ],
-                        rotation => 0,
-                        scale    => 0.5,
-                        texture  => "blob",
-                    );
+                    my $seg_alpha = $segment->[2] * $alpha;
+                    $seg_alpha *= 0.2
+                      if $segment->[1] < $self->game_state->{floor}
+                      or $segment->[1] > $self->game_state->{ceiling};
+                    $self->send_sprite_data( [ $segment->[0], $segment->[1] ],
+                        [ @color, $seg_alpha ], 0, 0.5, "blob", );
                 }
             }
         }
@@ -375,7 +366,7 @@ sub play_sound {
 sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
-    $self->print_text_2D( [ 0, $self->h - 12 ], "Controls: left up right d - Quit: q - Connect to server: n" );
+    $self->print_text_2D( [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n" );
 
     $self->print_text_2D(
         [ 0, 50 ],
@@ -404,7 +395,7 @@ sub render_ui {
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
-    $self->print_text_2D( [ 0, $self->h - 22 - $_ * 10 ], $to_display[$_] ) for 0 .. $#to_display;
+    $self->print_text_2D( [ 0, $self->height - 22 - $_ * 10 ], $to_display[$_] ) for 0 .. $#to_display;
 
     return;
 }

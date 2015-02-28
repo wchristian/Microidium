@@ -26,8 +26,10 @@ use Microidium::Helpers 'dfile';
 
 use Moo::Role;
 
-has app => ( is => 'lazy', handles => [qw( run stop w h sync )] );
+has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
+has width              => ( is => 'rw', default => sub { 800 } );
+has height             => ( is => 'rw', default => sub { 600 } );
 has frame              => ( is => 'rw', default => sub { 0 } );
 has fps                => ( is => 'rw', default => sub { 0 } );
 has frame_time         => ( is => 'rw', default => sub { 0 } );
@@ -38,7 +40,8 @@ has $_ => ( is => 'rw', default => sub { 0 } ) for qw( render_time world_time ui
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
 has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos );
-has sprites => ( is => 'rw', default => sub { {} } );
+has sprites          => ( is => 'rw', default => sub { {} } );
+has sprite_tex_order => ( is => 'rw', default => sub { [] } );
 
 BEGIN {
     my @gl_constants = qw(
@@ -69,6 +72,8 @@ sub _build_app {
         move_handlers  => [ $self->curry::on_move ],
         show_handlers  => [ $self->curry::on_show ],
         gl             => 1,
+        width          => $self->width,
+        height         => $self->height,
     );
 
     $self->init_sprites;
@@ -167,12 +172,16 @@ sub init_sprites {
     $self->new_vbo( $_ ) for qw( sprite );
 
     $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag geom ) );
-    $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ ) for qw( texture );
+    $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
+      for qw( texture screen camera );
     $self->attribs->{sprites}{$_} = $self->glGetAttribLocationARB_p_safe( "sprites", $_ )
       for qw( color offset rotation scale );
 
-    $self->textures->{$_} = $self->load_texture( dfile "$_.tga" )
-      for qw( player1 bullet blob thrust_flame thrust_right_flame thrust_left_flame );
+    glUseProgramObjectARB $self->shaders->{sprites};
+    glUniform2fARB $self->uniforms->{sprites}{screen}, $self->width, $self->height;
+
+    $self->sprite_tex_order( [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1 bullet )] );
+    $self->textures->{$_} = $self->load_texture( dfile "$_.tga" ) for @{ $self->sprite_tex_order };
 
     return;
 }
@@ -227,6 +236,9 @@ sub with_sprite_setup_render {
 
     glUseProgramObjectARB $self->shaders->{sprites};
 
+    my $uniforms = $self->uniforms->{sprites};
+    glUniform2fARB $uniforms->{camera}, @{ $self->client_state->{camera} }{qw( x y )};
+
     glActiveTextureARB GL_TEXTURE0;
 
     my $attribs = $self->attribs->{sprites};
@@ -240,22 +252,22 @@ sub with_sprite_setup_render {
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
-    my $stride = 4 * ( 4 + 3 + 1 + 1 );    # bytes * counts
-    glVertexAttribPointerARB_c $attribs->{color},    4, GL_FLOAT, GL_FALSE, $stride, 0;
+    my $value_count = 4 + 3 + 1 + 1;
+    my $stride      = 4 * $value_count;    # bytes * counts
+    glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
     glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
     glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
     glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
 
-    my $uniforms = $self->uniforms->{sprites};
-    for my $tex ( keys %{ $self->sprites } ) {
+    for my $tex ( @{ $self->sprite_tex_order } ) {
         glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
         glUniform1iARB $uniforms->{texture}, 0;
-        my @vertices =
-          map { @{ $_->{color} }, @{ $_->{location} }, $_->{rotation}, $_->{scale} } @{ $self->sprites->{$tex} };
+        my @vertices = map { @{$_} } @{ $self->sprites->{$tex} };
         my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @vertices );
         glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
 
-        glDrawArrays GL_POINTS, 0, scalar @vertices;
+        my $count = @vertices / $value_count;
+        glDrawArrays GL_POINTS, 0, $count;
     }
 
     glDisable GL_BLEND;
@@ -269,11 +281,11 @@ sub with_sprite_setup_render {
 }
 
 sub send_sprite_data {
-    my ( $self, %args ) = @_;
-    $args{color} ||= [ 1, 1, 1, 1 ];
-    $args{scale} //= 1;
-    $args{location}[2] //= 0;
-    push @{ $self->sprites->{ $args{texture} } }, \%args;
+    my ( $self, $location, $color, $rotation, $scale, $texture ) = @_;
+    $location->[2] //= 0;
+    $color ||= [ 1, 1, 1, 1 ];
+    $scale //= 1;
+    push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale ];
     return;
 }
 
