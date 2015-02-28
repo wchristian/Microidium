@@ -6,6 +6,7 @@ use List::Util qw( first min max );
 use Math::Trig qw' rad2deg ';
 use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Math::Vec ();
+use Time::HiRes 'time';
 
 use Moo::Role;
 
@@ -85,6 +86,7 @@ sub plan_bot_respawns {
         is_turning_left  => 0,
         is_turning_right => 0,
         is_firing        => 0,
+        reaction_time    => rand 0.1,
     );
     $self->plan_actor_addition( $new_game_state, \%stats );
 
@@ -123,6 +125,7 @@ sub plan_player_respawns {
             is_turning_left  => 0,
             is_turning_right => 0,
             is_firing        => 0,
+            reaction_time    => 0.04,
         );
         $new_game_state->{players}{ $player->{id} }{actor} = $self->plan_actor_addition( $new_game_state, \%actor );
     }
@@ -140,7 +143,7 @@ sub modify_actors {
         my $actor      = $old_actors->{$id};
         my $input_meth = $actor->{input};
         my $input      = $self->$input_meth( $actor );
-        $self->apply_inputs( $new_actors->{$id}, $input );
+        $self->apply_inputs( $new_actors->{$id}, $input ) if $input;
         my @c = ( $actor, $new_actors->{$id}, $new_game_state );
         $self->apply_translation_forces( @c );
         $self->apply_rotation_forces( @c );
@@ -183,13 +186,18 @@ sub new_actor_id {
 
 sub computer_ai {
     my ( $self, $actor ) = @_;
+    return if $actor->{last_decision_time} and time < $actor->{last_decision_time} + .04;
+
     my $actors = $self->game_state->{actors};
     delete $actor->{enemy}
       if $actor->{enemy}
       and ( !$actors->{ $actor->{enemy} }
         or $actors->{ $actor->{enemy} }->{y} < $self->too_deep );
     $actor->{enemy} ||= $self->find_enemy( $actor );
-    return $self->simple_ai_step( $actor, $actor->{enemy} );
+
+    my $decision = $self->simple_ai_step( $actor, $actor->{enemy} );
+    $decision->{last_decision_time} = time;
+    return $decision;
 }
 
 sub too_deep { shift->game_state->{floor} - 100 }
@@ -229,10 +237,11 @@ sub simple_ai_step {
 
 sub apply_inputs {
     my ( $self, $new_player, $client_state ) = @_;
-    $new_player->{is_thrusting}     = $client_state->{thrust};
-    $new_player->{is_turning_left}  = $client_state->{turn_left};
-    $new_player->{is_turning_right} = $client_state->{turn_right};
-    $new_player->{is_firing}        = $client_state->{fire};
+    $new_player->{is_thrusting}       = $client_state->{thrust};
+    $new_player->{is_turning_left}    = $client_state->{turn_left};
+    $new_player->{is_turning_right}   = $client_state->{turn_right};
+    $new_player->{is_firing}          = $client_state->{fire};
+    $new_player->{last_decision_time} = $client_state->{last_decision_time} if $client_state->{last_decision_time};
     return;
 }
 
