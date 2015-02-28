@@ -185,9 +185,13 @@ sub render_world {
         $dist = 0 if $dist < 0;
         my $cam_x_target = $player_actor->{x} + ( $dist * sin deg2rad $player_actor->{rot} );
         my $cam_y_target = $player_actor->{y} + ( $dist * cos deg2rad $player_actor->{rot} );
-        my $diff_x       = $cam_x_target - $cam->{x};
-        my $diff_y       = $cam_y_target - $cam->{y};
-        my $damp         = 0.03;
+
+        $cam_y_target = $self->game_state->{floor}   if $cam_y_target < $self->game_state->{floor};
+        $cam_y_target = $self->game_state->{ceiling} if $cam_y_target > $self->game_state->{ceiling};
+
+        my $diff_x = $cam_x_target - $cam->{x};
+        my $diff_y = $cam_y_target - $cam->{y};
+        my $damp   = 0.03;
         $cam->{x} += $diff_x * $damp;
         $cam->{y} += $diff_y * $damp;
 
