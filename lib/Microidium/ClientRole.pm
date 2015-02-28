@@ -266,7 +266,7 @@ sub render_world {
             $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
               for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };
 
-            my $max_trail = 22;
+            my $max_trail = 45;
 
             for my $flier ( values %actors ) {
                 my @color = @{
