@@ -28,8 +28,10 @@ use Moo::Role;
 
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
+has display_scale      => ( is => 'rw', default => sub { 800 } );
 has width              => ( is => 'rw', default => sub { 800 } );
 has height             => ( is => 'rw', default => sub { 600 } );
+has aspect_ratio       => ( is => 'rw', default => sub { 800 / 600 } );
 has frame              => ( is => 'rw', default => sub { 0 } );
 has fps                => ( is => 'rw', default => sub { 0 } );
 has frame_time         => ( is => 'rw', default => sub { 0 } );
@@ -75,6 +77,7 @@ sub _build_app {
         gl             => 1,
         width          => $self->width,
         height         => $self->height,
+        resizeable     => 1,
         min_t          => 1 / 62,
     );
 
@@ -102,6 +105,20 @@ sub on_event {
     die "unknown event type: $type" if !exists $handlers->{$type};
     return unless my $meth = $handlers->{$type};
     $self->$meth( $event );
+    return;
+}
+
+sub on_videoresize {
+    my ( $self, $event ) = @_;
+
+    $self->width( $event->resize_w );
+    $self->height( $event->resize_h );
+
+    glUseProgramObjectARB $self->shaders->{sprites};
+    glUniform1fARB $self->uniforms->{sprites}{aspect_ratio}, $self->width / $self->height;
+
+    glViewport( 0, 0, $self->width, $self->height );
+
     return;
 }
 
@@ -175,12 +192,13 @@ sub init_sprites {
 
     $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag geom ) );
     $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
-      for qw( texture screen camera );
+      for qw( texture camera display_scale aspect_ratio );
     $self->attribs->{sprites}{$_} = $self->glGetAttribLocationARB_p_safe( "sprites", $_ )
       for qw( color offset rotation scale );
 
     glUseProgramObjectARB $self->shaders->{sprites};
-    glUniform2fARB $self->uniforms->{sprites}{screen}, $self->width, $self->height;
+    glUniform1fARB $self->uniforms->{sprites}{display_scale}, $self->display_scale;
+    glUniform1fARB $self->uniforms->{sprites}{aspect_ratio},  $self->aspect_ratio;
 
     $self->sprite_tex_order( [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1 bullet )] );
     $self->textures->{$_} = $self->load_texture( dfile "$_.tga" ) for @{ $self->sprite_tex_order };
