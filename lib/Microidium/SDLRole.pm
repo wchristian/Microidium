@@ -117,6 +117,9 @@ sub on_videoresize {
     glUseProgramObjectARB $self->shaders->{sprites};
     glUniform1fARB $self->uniforms->{sprites}{aspect_ratio}, $self->width / $self->height;
 
+    glUseProgramObjectARB $self->shaders->{text};
+    glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
+
     glViewport( 0, 0, $self->width, $self->height );
 
     return;
@@ -212,8 +215,11 @@ sub init_text_2D {
     $self->new_vbo( $_ ) for qw( text_vertices );
 
     $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag ) );
-    $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ ) for qw( texture color );
+    $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ ) for qw( texture color screen );
     $self->attribs->{text}{$_} = $self->glGetAttribLocationARB_p_safe( "text", $_ ) for qw( vertex );
+
+    glUseProgramObjectARB $self->shaders->{text};
+    glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
 
     $self->textures->{text} = $self->load_texture( $path );
 
