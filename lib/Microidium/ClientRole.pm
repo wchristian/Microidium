@@ -34,6 +34,7 @@ has local_player_id   => ( is => 'rw' );
 has network_player_id => ( is => 'rw' );
 has team_colors =>
   ( is => 'ro', default => sub { { 1 => [ .9, .9, .9, 1 ], 2 => [ .9, .7, .2, 1 ], 3 => [ .2, .8, 1, 1 ] } } );
+has music_is_playing => ( is => 'rw' );
 
 my %trails;
 
@@ -170,6 +171,14 @@ my %spring = (
 
 sub render_world {
     my ( $self, $game_state ) = @_;
+
+    if ( !$self->music_is_playing ) {
+        my $music = SDL::Mixer::Music::load_MUS( dfile 'vecinec22.ogg' );
+        SDL::Mixer::Music::volume_music( 30 );
+        die "music playback error" if SDL::Mixer::Music::play_music( $music, -1 ) == -1;
+        $self->music_is_playing( 1 );
+    }
+
     my $player_actor = $self->local_player_actor;
     my $cam          = $self->client_state->{camera};
 

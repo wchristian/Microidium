@@ -11,6 +11,7 @@ use SDL::Constants       ();
 use SDL::Mixer::Samples  ();
 use SDL::Mixer::Channels ();
 use SDL::Mixer::Effects  ();
+use SDL::Mixer::Music    ();
 use SDL::Mixer;
 use Time::HiRes 'time';
 use curry;
@@ -65,6 +66,9 @@ BEGIN {
 
 sub _build_app {
     my ( $self ) = @_;
+
+    # i'd use mp3, but throwing mp3 at the music mixer seems to crash it
+    die "no ogg support" if !( SDL::Mixer::init( MIX_INIT_OGG ) & MIX_INIT_OGG );
 
     printf "Error initializing SDL_mixer: %s\n", SDL::get_error
       if SDL::Mixer::open_audio 44100, AUDIO_S16, 2, 1024;

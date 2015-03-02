@@ -55,6 +55,8 @@ publicly talking about and explaining their respective networking models:
 L<The Tribes Networking Model|http://gamedevs.org/uploads/tribes-networking-model.pdf>
 and L<I Shot You First!|http://www.gdcvault.com/play/1014345/I-Shot-You-First-Networking>
 
+Charon for his delightful music track "vecinec22".
+
 =head1 RESOURCES
 
 Sounds made with http://www.bfxr.net/

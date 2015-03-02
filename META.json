@@ -67,6 +67,7 @@
             "SDL::Mixer" : "0",
             "SDL::Mixer::Channels" : "0",
             "SDL::Mixer::Effects" : "0",
+            "SDL::Mixer::Music" : "0",
             "SDL::Mixer::Samples" : "0",
             "SDLx::App" : "0",
             "Sereal" : "0",

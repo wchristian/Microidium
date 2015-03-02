@@ -21,6 +21,7 @@ requires "SDL::Constants" => "0";
 requires "SDL::Mixer" => "0";
 requires "SDL::Mixer::Channels" => "0";
 requires "SDL::Mixer::Effects" => "0";
+requires "SDL::Mixer::Music" => "0";
 requires "SDL::Mixer::Samples" => "0";
 requires "SDLx::App" => "0";
 requires "Sereal" => "0";
