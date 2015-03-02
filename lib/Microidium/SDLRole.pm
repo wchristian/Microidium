@@ -118,9 +118,10 @@ sub on_videoresize {
 
     $self->width( $event->resize_w );
     $self->height( $event->resize_h );
+    $self->aspect_ratio( $self->width / $self->height );
 
     glUseProgramObjectARB $self->shaders->{sprites};
-    glUniform1fARB $self->uniforms->{sprites}{aspect_ratio}, $self->width / $self->height;
+    glUniform1fARB $self->uniforms->{sprites}{aspect_ratio}, $self->aspect_ratio;
 
     glUseProgramObjectARB $self->shaders->{text};
     glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
