@@ -29,7 +29,7 @@ use Moo::Role;
 
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
-has display_scale      => ( is => 'rw', default => sub { 800 } );
+has display_scale      => ( is => 'rw', default => sub { 600 } );
 has width              => ( is => 'rw', default => sub { 800 } );
 has height             => ( is => 'rw', default => sub { 600 } );
 has aspect_ratio       => ( is => 'rw', default => sub { 800 / 600 } );

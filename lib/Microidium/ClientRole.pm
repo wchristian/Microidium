@@ -242,8 +242,8 @@ sub render_world {
     my $STAR_SEED      = 0x9d2c5680;
     my $STAR_TILE_SIZE = 512;
 
-    my $w = $self->display_scale;
-    my $h = $self->display_scale / $self->aspect_ratio;
+    my $w = $self->display_scale * $self->aspect_ratio;
+    my $h = $self->display_scale;
     my $c = $self->team_colors;
 
     my %actors = %{ $game_state->{actors} };
