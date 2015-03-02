@@ -313,6 +313,8 @@ sub render_world {
                 }
             }
 
+            @sprites = sort { $b->[0][2] <=> $a->[0][2] } @sprites;
+
             $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
               for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };
 
