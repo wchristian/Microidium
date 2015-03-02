@@ -8,6 +8,7 @@ layout (location = 3) in float scale;
 uniform vec2 camera;
 uniform float display_scale;
 uniform float aspect_ratio;
+uniform float fov;
 
 out VS_OUT {
     vec4 color;
@@ -43,7 +44,7 @@ void main() {
     float near = 0.001;
     float far = 10000.0;
     float range = near - far;
-    float tanHalfFOV = tan( radians ( 90.0 / 2.0 ) );
+    float tanHalfFOV = tan( radians ( fov / 2.0 ) );
 
     mat4 perspmat = mat4(
         1.0 / ( tanHalfFOV * aspect_ratio ), 0.0,              0.0,                          0.0,

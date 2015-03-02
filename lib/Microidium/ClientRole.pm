@@ -4,7 +4,7 @@ package Microidium::ClientRole;
 
 use lib '..';
 use 5.010;
-use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n );
+use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l );
 use List::Util qw( min max );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
@@ -127,6 +127,9 @@ sub on_keydown {
     $self->client_state->{turn_left}  = 1 if $sym == SDLK_LEFT;
     $self->client_state->{turn_right} = 1 if $sym == SDLK_RIGHT;
     $self->client_state->{fire}       = 1 if $sym == SDLK_d;
+    $self->change_fov( $self->fov - 10 ) if $sym == SDLK_o;
+    $self->change_fov( $self->fov + 10 ) if $sym == SDLK_l;
+
     if ( $self->in_network_game ) {
         $self->log( "sent: DOWN $sym" );
         $self->pryo->send_tcp( $self->client_state );
@@ -375,7 +378,8 @@ sub play_sound {
 sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
-    $self->print_text_2D( [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n" );
+    $self->print_text_2D( [ 0, $self->height - 12 ],
+        "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" );
 
     $self->print_text_2D( [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count );
 
