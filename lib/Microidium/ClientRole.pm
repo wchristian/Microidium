@@ -250,6 +250,16 @@ sub render_world {
 
     $self->with_sprite_setup(
         sub {
+            my $screen_bottom = $cam->{y} - $h;
+            my $screen_left   = $cam->{x} - $w;
+            my $screen_top    = $cam->{y} + $h;
+            my $screen_right  = $cam->{x} + $w;
+            $self->send_sprite_data( [ 0,             0 ],              [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
+            $self->send_sprite_data( [ $screen_left,  $screen_bottom ], [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
+            $self->send_sprite_data( [ $screen_left,  $screen_top ],    [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
+            $self->send_sprite_data( [ $screen_right, $screen_bottom ], [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
+            $self->send_sprite_data( [ $screen_right, $screen_top ],    [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
+
             for my $starscale ( 1 ) {
                 my $size = $STAR_TILE_SIZE / $starscale;
 
