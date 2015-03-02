@@ -33,6 +33,7 @@ has display_scale      => ( is => 'rw', default => sub { 600 } );
 has width              => ( is => 'rw', default => sub { 800 } );
 has height             => ( is => 'rw', default => sub { 600 } );
 has aspect_ratio       => ( is => 'rw', default => sub { 800 / 600 } );
+has sprite_size        => ( is => 'rw', default => sub { 160 } );
 has fov                => ( is => 'rw', default => sub { 90 } );
 has frame              => ( is => 'rw', default => sub { 0 } );
 has fps                => ( is => 'rw', default => sub { 0 } );
@@ -209,13 +210,14 @@ sub init_sprites {
 
     $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag geom ) );
     $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
-      for qw( texture camera display_scale aspect_ratio fov );
+      for qw( texture camera display_scale aspect_ratio sprite_size fov );
     $self->attribs->{sprites}{$_} = $self->glGetAttribLocationARB_p_safe( "sprites", $_ )
       for qw( color offset rotation scale );
 
     glUseProgramObjectARB $self->shaders->{sprites};
     glUniform1fARB $self->uniforms->{sprites}{display_scale}, $self->display_scale;
     glUniform1fARB $self->uniforms->{sprites}{aspect_ratio},  $self->aspect_ratio;
+    glUniform1fARB $self->uniforms->{sprites}{sprite_size},   $self->sprite_size;
     glUniform1fARB $self->uniforms->{sprites}{fov},           $self->fov;
 
     $self->sprite_tex_order( [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1 bullet )] );

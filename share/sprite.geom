@@ -9,6 +9,7 @@ in VS_OUT {
 } gs_in[];
 
 uniform float display_scale;
+uniform float sprite_size;
 
 out vec4 f_color;
 out vec2 f_uv;
@@ -17,7 +18,7 @@ void main() {
     mat4 matrix = gs_in[0].matrix;
     f_color = gs_in[0].color;
     
-    float sprite_half_width = 80;
+    float sprite_half_width = sprite_size / 2;
     float sprite_half_width_in_scale = sprite_half_width / display_scale;
 
     f_uv = vec2( 0.0, 1.0 );
