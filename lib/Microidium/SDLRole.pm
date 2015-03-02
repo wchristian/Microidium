@@ -334,6 +334,18 @@ sub send_sprite_data {
     return;
 }
 
+sub send_sprite_datas {
+    my ( $self, @datas ) = @_;
+    for my $sprite ( @datas ) {
+        my ( $location, $color, $rotation, $scale, $texture ) = @{$sprite};
+        $location->[2] //= 0;
+        $color ||= [ 1, 1, 1, 1 ];
+        $scale //= 1;
+        push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale ];
+    }
+    return;
+}
+
 sub print_text_2D {
     my ( $self, $settings, $text ) = @_;
     my ( $x, $y, $size, $color ) = @{$settings};

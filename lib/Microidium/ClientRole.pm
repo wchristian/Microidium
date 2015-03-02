@@ -293,7 +293,7 @@ sub render_world {
                 $right_end += $tile_size;
             }
 
-            my @backgrounds;
+            my @sprites;
             for my $y_tile ( ( $bottom_start / $tile_size ) .. ( $top_end / $tile_size ) ) {
                 my $j = $y_tile * $tile_size;
                 for my $x_tile ( ( $left_start / $tile_size ) .. ( $right_end / $tile_size ) ) {
@@ -308,11 +308,10 @@ sub render_world {
                         $hash >>= 3;
                         my $color =
                           $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
-                        push @backgrounds, [ [ $px, $py, $pz ], $color, 0, $sprite_mult, "blob" ];
+                        push @sprites, [ [ $px, $py, $pz ], $color, 0, $sprite_mult, "blob" ];
                     }
                 }
             }
-            $self->send_sprite_data( @{$_} ) for @backgrounds;
 
             $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
               for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };
@@ -333,10 +332,13 @@ sub render_world {
                 {
                     $color[$_] *= 0.5 for 0 .. 2;
                 }
-                $self->send_sprite_data( [ $flier->{x}, $flier->{y}, ],
+                push @sprites,
+                  [
+                    [ $flier->{x}, $flier->{y}, ],
                     $flier->{is_bullet}
                     ? ( \@color, 0, .3, "bullet", )
-                    : ( \@color, $flier->{rot}, 1.5, "player1", ) );
+                    : ( \@color, $flier->{rot}, 1.5, "player1", )
+                  ];
 
                 if ( !$flier->{is_bullet} ) {
                     my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
@@ -353,7 +355,7 @@ sub render_world {
                       is_turning_right thrust_right_flame
                       is_turning_left  thrust_left_flame
                     );
-                    $self->send_sprite_data( [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, $flames{$_}, )
+                    push @sprites, [ [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, $flames{$_} ]
                       for grep { $flier->{$_} } keys %flames;
                 }
             }
@@ -379,10 +381,11 @@ sub render_world {
                     $seg_alpha *= 0.2
                       if $segment->[1] < $self->game_state->{floor}
                       or $segment->[1] > $self->game_state->{ceiling};
-                    $self->send_sprite_data( [ $segment->[0], $segment->[1] ],
-                        [ @color, $seg_alpha ], 0, 0.5, "blob", );
+                    push @sprites, [ [ $segment->[0], $segment->[1] ], [ @color, $seg_alpha ], 0, 0.5, "blob" ];
                 }
             }
+
+            $self->send_sprite_datas( @sprites );
         }
     );
 
