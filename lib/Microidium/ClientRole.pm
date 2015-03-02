@@ -11,6 +11,7 @@ use Microidium::Helpers 'dfile';
 use PryoNet::Client;
 use Acme::MITHALDU::XSGrabBag qw' deg2rad mix ';
 use Time::HiRes 'time';
+use POSIX 'floor';
 
 use Moo::Role;
 
@@ -239,8 +240,9 @@ sub render_world {
 
     my $highlight = ( $self->last_player_hit > time - 2 );
 
-    my $STAR_SEED      = 0x9d2c5680;
-    my $STAR_TILE_SIZE = 512;
+    my $STAR_SEED    = 0x9d2c5680;
+    my $tile_size    = 512;
+    my $max_bg_depth = 2;            # this relates to $screen_bg_mult, but i'm not sure how
 
     my $w = $self->display_scale * $self->aspect_ratio;
     my $h = $self->display_scale;
@@ -260,30 +262,57 @@ sub render_world {
             $self->send_sprite_data( [ $screen_right, $screen_bottom ], [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
             $self->send_sprite_data( [ $screen_right, $screen_top ],    [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
 
-            for my $starscale ( 1 ) {
-                my $size = $STAR_TILE_SIZE / $starscale;
+            my $screen_bg_mult = 2.9;    # this relates to $max_bg_depth and fov, but i'm not sure how
+            my $screen_bottom_bg = $cam->{y} - $h * $screen_bg_mult;
+            my $screen_left_bg   = $cam->{x} - $w * $screen_bg_mult;
+            my $screen_top_bg    = $cam->{y} + $h * $screen_bg_mult;
+            my $screen_right_bg  = $cam->{x} + $w * $screen_bg_mult;
 
-                # Top-left tile's top-left position.
-                my $sx = int( ( $cam->{x} - $w / 2 ) / $size ) * $size - ( $size * 8 );
-                my $sy = int( ( $cam->{y} - $h / 2 ) / $size ) * $size - ( $size * 5 );
+            my $sprite_target_radius = 600;
+            my $sprite_mult          = 2 * 2 * $sprite_target_radius / $self->sprite_size;
+            my $camera_tile_y        = floor( $cam->{y} / $tile_size );
+            my $camera_tile_x        = floor( $cam->{x} / $tile_size );
 
-                for ( my $i = $sx ; $i <= $w + $sx + ( $size * 15 ) ; $i += $size ) {
-                    for ( my $j = $sy ; $j <= $h + $sy + ( $size * 9 ) ; $j += $size ) {
-                        my $hash = mix( $STAR_SEED, $i, $j );
-                        for ( 1 .. 2 ) {
-                            my $px = $i + ( $hash % $size );
-                            $hash >>= 3;
-                            my $py = $j + ( $hash % $size );
-                            $hash >>= 3;
-                            my $pz = "0.$hash" * 2;
-                            $hash >>= 3;
-                            my $color =
-                              $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
-                            $self->send_sprite_data( [ $px, $py, $pz + 0.01 ], $color, 0, 15, "blob", );
-                        }
+            my $bottom_start = $camera_tile_y * $tile_size;
+            while ( $bottom_start + $tile_size + $sprite_target_radius > $screen_bottom_bg ) {
+                $bottom_start -= $tile_size;
+            }
+
+            my $top_end = $camera_tile_y * $tile_size;
+            while ( $top_end - $sprite_target_radius < $screen_top_bg ) {
+                $top_end += $tile_size;
+            }
+
+            my $left_start = $camera_tile_x * $tile_size;
+            while ( $left_start + $tile_size + $sprite_target_radius > $screen_left_bg ) {
+                $left_start -= $tile_size;
+            }
+
+            my $right_end = $camera_tile_x * $tile_size;
+            while ( $right_end - $sprite_target_radius < $screen_right_bg ) {
+                $right_end += $tile_size;
+            }
+
+            my @backgrounds;
+            for my $y_tile ( ( $bottom_start / $tile_size ) .. ( $top_end / $tile_size ) ) {
+                my $j = $y_tile * $tile_size;
+                for my $x_tile ( ( $left_start / $tile_size ) .. ( $right_end / $tile_size ) ) {
+                    my $i = $x_tile * $tile_size;
+                    my $hash = mix( $STAR_SEED, $i, $j );
+                    for ( 1 .. 1 ) {
+                        my $px = $i + ( $hash % $tile_size );
+                        $hash >>= 3;
+                        my $py = $j + ( $hash % $tile_size );
+                        $hash >>= 3;
+                        my $pz = "0.$hash" * $max_bg_depth;
+                        $hash >>= 3;
+                        my $color =
+                          $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
+                        push @backgrounds, [ [ $px, $py, $pz ], $color, 0, $sprite_mult, "blob" ];
                     }
                 }
             }
+            $self->send_sprite_data( @{$_} ) for @backgrounds;
 
             $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
               for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };

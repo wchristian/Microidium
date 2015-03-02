@@ -16,6 +16,7 @@ requires "Math::Vec" => "0";
 requires "Moo" => "0";
 requires "Moo::Role" => "0";
 requires "OpenGL::Image" => "0";
+requires "POSIX" => "0";
 requires "SDL" => "0";
 requires "SDL::Constants" => "0";
 requires "SDL::Mixer" => "0";
