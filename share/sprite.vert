@@ -54,5 +54,13 @@ void main() {
     );
 
     vs_out.color = color;
+    if (offset.z > 0.0) {
+        float max_dist = 4.0;
+        float dim = min( 1.0, offset.z / max_dist );
+        vs_out.color.r -= ( vs_out.color.r - 0.3 ) * dim;
+        vs_out.color.g -= vs_out.color.g * dim;
+        vs_out.color.b -= vs_out.color.b * dim;
+    }
+
     vs_out.matrix = perspmat * translate_mat * rotate_mat * scale_mat;
 }
