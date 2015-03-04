@@ -162,6 +162,7 @@ sub connect {
 
 my @thrusts = qw( is_thrusting is_turning_left is_turning_right );
 my %cam_effect_accums = map( ( $_ => [ ( 0 ) x 30 ] ), @thrusts );
+my @explosions;
 
 my %spring = (
     anchor_pos => -50,
@@ -386,6 +387,22 @@ sub render_world {
                       or $segment->[1] > $self->game_state->{ceiling};
                     push @sprites, [ [ $segment->[0], $segment->[1] ], [ @color, $seg_alpha ], 0, 0.5, "blob" ];
                 }
+            }
+
+            @explosions = grep $_->{life} > 0, @explosions;
+            for my $event ( @{ $game_state->{events} } ) {
+                next if $event->{type} ne "flier_died";
+                my $scale = $event->{is_bullet} ? 0.3 : 1;
+                my $life  = $event->{is_bullet} ? 1   : 1.5;
+                push @explosions,
+                  { x => $event->{x}, y => $event->{y}, life => $life, scale => $scale, team => $event->{team} };
+            }
+
+            for my $ex ( @explosions ) {
+                my @color = ( @{ $c->{ $ex->{team} } }[ 0 .. 2 ], 0.8 * $ex->{life} );
+                my $scale = $ex->{scale} * $ex->{life};
+                push @sprites, [ [ $ex->{x}, $ex->{y} ], \@color, 0, $scale, "bullet" ];
+                $ex->{life} -= 0.1;
             }
 
             $self->send_sprite_datas( @sprites );
