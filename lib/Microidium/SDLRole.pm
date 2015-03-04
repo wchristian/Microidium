@@ -48,6 +48,7 @@ has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniform
 has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
+has [qw(fbo depth_texture color_texture)] => ( is => "rw" );
 
 BEGIN {
     my @gl_constants = qw(
@@ -56,6 +57,10 @@ BEGIN {
       GL_ARRAY_BUFFER GL_STATIC_DRAW GL_TEXTURE0 GL_TEXTURE_MIN_FILTER
       GL_TEXTURE_MAG_FILTER GL_NEAREST GL_VERTEX_SHADER GL_FRAGMENT_SHADER
       GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
+      GL_LINEAR GL_TEXTURE_WRAP_S GL_CLAMP GL_TEXTURE_WRAP_T GL_RGBA
+      GL_DEPTH_COMPONENT GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER
+      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_FRAMEBUFFER_COMPLETE
+      GL_ONE GL_ONE_MINUS_SRC_ALPHA
     );
 
     for my $name ( @gl_constants ) {
@@ -89,6 +94,8 @@ sub _build_app {
 
     $self->init_sprites;
     $self->init_text_2D( dfile "courier.tga" );
+    $self->init_fbo;
+    $self->init_screen_target;
 
     return $app;
 }
@@ -167,10 +174,17 @@ sub render {
     my $game_state = $self->game_state;
 
     my $now = time;
+    glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbo;    # render target: fbo
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
-    $self->render_world( $game_state );    # TODO: render to texture
+    $self->render_world( $game_state );
     $self->smooth_update( world_time => time - $now );
+
+    glBindFramebufferEXT GL_FRAMEBUFFER, 0;                  # render target: screen
+    glClearColor 0, 0, 0, 0;
+    glClear GL_COLOR_BUFFER_BIT;
+    $self->render_screen_target;
+
     my $now2 = time;
     $self->render_ui( $game_state );
     $self->smooth_update( ui_time => time - $now2 );
@@ -190,7 +204,8 @@ sub glGetAttribLocationARB_p_safe {
     my ( $self, $shader_name, $attrib_name ) = @_;
     my $shader = $self->shaders->{$shader_name};
     my $ret = glGetAttribLocationARB_p $shader, $attrib_name;
-    die "Could not find attribute '$attrib_name' in '$shader_name'" if $ret == -1;
+
+    #die "Could not find attribute '$attrib_name' in '$shader_name'" if $ret == -1;
     return $ret;
 }
 
@@ -198,8 +213,66 @@ sub glGetUniformLocationARB_p_safe {
     my ( $self, $shader_name, $attrib_name ) = @_;
     my $shader = $self->shaders->{$shader_name};
     my $ret = glGetUniformLocationARB_p $shader, $attrib_name;
-    die "Could not find uniform '$attrib_name' in '$shader_name'" if $ret == -1;
+
+    #die "Could not find uniform '$attrib_name' in '$shader_name'" if $ret == -1;
     return $ret;
+}
+
+sub init_fbo {
+    my ( $self ) = @_;
+
+    my @dim = ( $self->width, $self->height );
+
+    # color texture
+    $self->textures->{fbo_color} = $self->color_texture( glGenTextures_p 1 );
+    glBindTexture GL_TEXTURE_2D,   $self->color_texture;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP;
+    glTexImage2D_c GL_TEXTURE_2D,  0, GL_RGBA, @dim, 0, GL_RGBA, GL_FLOAT, 0;
+
+    # depth texture
+    $self->textures->{fbo_depth} = $self->depth_texture( glGenTextures_p 1 );
+    glBindTexture GL_TEXTURE_2D,   $self->depth_texture;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
+    glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP;
+    glTexImage2D_c GL_TEXTURE_2D,  0, GL_DEPTH_COMPONENT, @dim, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0;
+
+    # fbo
+    $self->fbo( glGenFramebuffersEXT_p 1 );
+    glBindFramebufferEXT GL_FRAMEBUFFER, $self->fbo;
+
+    # attach textures to fbo
+    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, $self->color_texture, 0;
+    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,      GL_TEXTURE_2D, $self->depth_texture, 0;
+
+    my $Status = glCheckFramebufferStatusEXT GL_FRAMEBUFFER;
+    die "FB error, status: 0x%x\n", $Status if $Status != GL_FRAMEBUFFER_COMPLETE;
+
+    return;
+}
+
+sub init_screen_target {
+    my ( $self ) = @_;
+
+    $self->new_vbo( $_ ) for qw( screen_target );
+
+    $self->shaders->{screen_target} = $self->load_shader_set( map dfile "screen_target.$_", qw( vert frag geom ) );
+    $self->uniforms->{screen_target}{$_} = $self->glGetUniformLocationARB_p_safe( "screen_target", $_ )
+      for qw( texture camera display_scale aspect_ratio sprite_size fov );
+    $self->attribs->{screen_target}{$_} = $self->glGetAttribLocationARB_p_safe( "screen_target", $_ )
+      for qw( color offset rotation scale );
+
+    glUseProgramObjectARB $self->shaders->{screen_target};
+    glUniform1fARB $self->uniforms->{screen_target}{display_scale}, $self->display_scale;
+    glUniform1fARB $self->uniforms->{screen_target}{aspect_ratio},  $self->aspect_ratio;
+    glUniform1fARB $self->uniforms->{screen_target}{sprite_size},   $self->sprite_size;
+    glUniform1fARB $self->uniforms->{screen_target}{fov},           $self->fov;
+
+    return;
 }
 
 # TODO: see https://github.com/nikki93/opengl/blob/master/main.cpp
@@ -250,7 +323,7 @@ sub render_random_sprite {
     $args{rotation} //= 360 * rand();
     $args{scale}    //= rand();
     $args{texture}  //= "player1";
-    $self->render_sprite( %args );
+    $self->render_sprite( $args{location}, $args{color}, $args{rotation}, $args{scale}, $args{texture} );
     return;
 }
 
@@ -326,11 +399,8 @@ sub with_sprite_setup_render {
 }
 
 sub send_sprite_data {
-    my ( $self, $location, $color, $rotation, $scale, $texture ) = @_;
-    $location->[2] //= 0;
-    $color ||= [ 1, 1, 1, 1 ];
-    $scale //= 1;
-    push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale ];
+    my ( $self, @args ) = @_;
+    $self->send_sprite_datas( [@args] );
     return;
 }
 
@@ -343,6 +413,51 @@ sub send_sprite_datas {
         $scale //= 1;
         push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale ];
     }
+    return;
+}
+
+sub render_screen_target {
+    my ( $self ) = @_;
+
+    glUseProgramObjectARB $self->shaders->{screen_target};
+
+    my $uniforms = $self->uniforms->{screen_target};
+    glUniform2fARB $uniforms->{camera}, 0, 0;
+
+    glActiveTextureARB GL_TEXTURE0;
+
+    my $attribs = $self->attribs->{screen_target};
+    glEnableVertexAttribArrayARB $attribs->{color};
+    glEnableVertexAttribArrayARB $attribs->{offset};
+    glEnableVertexAttribArrayARB $attribs->{rotation};
+    glEnableVertexAttribArrayARB $attribs->{scale};
+
+    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{screen_target};
+
+    glEnable GL_BLEND;
+    glBlendFunc GL_ONE, GL_ONE_MINUS_SRC_ALPHA;
+
+    my $value_count = 4 + 3 + 1 + 1;
+    my $stride      = 4 * $value_count;    # bytes * counts
+    glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
+    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
+
+    glBindTexture GL_TEXTURE_2D, $self->textures->{fbo_color};
+    glUniform1iARB $uniforms->{texture}, 0;
+    my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, ( 1, 1, 1, 1 ), ( 0, 0, 0 ), 0, 10 );
+    glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
+
+    glDrawArrays GL_POINTS, 0, 1;
+
+    glDisable GL_BLEND;
+
+    glDisableVertexAttribArrayARB $attribs->{color};
+    glDisableVertexAttribArrayARB $attribs->{offset};
+    glDisableVertexAttribArrayARB $attribs->{rotation};
+    glDisableVertexAttribArrayARB $attribs->{scale};
+
     return;
 }
 
