@@ -211,10 +211,11 @@ sub render_world {
 
         for my $event ( @{ $game_state->{events} } ) {
             next if $event->{type} ne "flier_died";
+            next if $event->{is_bullet};
             my $max_dist = 400;
             my $dist = ( ( $event->{x} - $player_actor->{x} )**2 + ( $event->{y} - $player_actor->{y} )**2 )**0.5;
             next if $dist > $max_dist;
-            my $max_force = 20;
+            my $max_force = 40;
             my $force = 1 + ( $max_force - 1 ) * ( ( 4 / ( 3 * ( $dist / $max_dist + 1 )**2 ) ) - 1 / 3 );
             $spring{mass_pos}[$_] += 0 - $force + rand( 2 * $force ) for 0 .. 1;
         }
