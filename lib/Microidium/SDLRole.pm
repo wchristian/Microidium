@@ -50,7 +50,7 @@ has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniform
 has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
-has [qw(fbo depth_texture color_texture)] => ( is => "rw" );
+has fbo              => ( is => "rw" );
 
 BEGIN {
     my @gl_constants = qw(
@@ -222,10 +222,11 @@ sub init_fbo {
     my ( $self ) = @_;
 
     my @dim = ( $self->fb_width, $self->fb_height );
+    my $textures = $self->textures;
 
     # color texture
-    $self->textures->{fbo_color} = $self->color_texture( glGenTextures_p 1 );
-    glBindTexture GL_TEXTURE_2D,   $self->color_texture;
+    $textures->{fbo_color} = glGenTextures_p 1;
+    glBindTexture GL_TEXTURE_2D,   $textures->{fbo_color};
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
@@ -233,8 +234,8 @@ sub init_fbo {
     glTexImage2D_c GL_TEXTURE_2D,  0, GL_RGBA, @dim, 0, GL_RGBA, GL_FLOAT, 0;
 
     # depth texture
-    $self->textures->{fbo_depth} = $self->depth_texture( glGenTextures_p 1 );
-    glBindTexture GL_TEXTURE_2D,   $self->depth_texture;
+    $textures->{fbo_depth} = glGenTextures_p 1;
+    glBindTexture GL_TEXTURE_2D,   $textures->{fbo_depth};
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
@@ -246,8 +247,8 @@ sub init_fbo {
     glBindFramebufferEXT GL_FRAMEBUFFER, $self->fbo;
 
     # attach textures to fbo
-    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, $self->color_texture, 0;
-    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,      GL_TEXTURE_2D, $self->depth_texture, 0;
+    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, $textures->{fbo_color}, 0;
+    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,      GL_TEXTURE_2D, $textures->{fbo_depth}, 0;
 
     my $Status = glCheckFramebufferStatusEXT GL_FRAMEBUFFER;
     die "FB error, status: 0x%x\n", $Status if $Status != GL_FRAMEBUFFER_COMPLETE;
