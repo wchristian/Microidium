@@ -14,9 +14,15 @@ void main() {
     float y = display_scale / 200;
     float x = y * aspect_ratio;
     float inverse_ar = 1 / aspect_ratio;
+    float ysteps = 7;
+    float xsteps = 7;
+    float y_size = 2.0 * y / ysteps;
+    float x_size = 2.0 * x / xsteps;
 
-    for( float xi = -x ; xi < x ; xi += 1.0 ) {
-        for ( float yi = -y ; yi < y ; yi += 1.0 ) {
+    for ( float ystepsi = -ysteps ; ystepsi < ysteps ; ystepsi++ ) {
+        float yi = ystepsi * y_size;
+        for ( float xstepsi = -xsteps ; xstepsi < xsteps ; xstepsi++ ) {
+            float xi = xstepsi * x_size;
             float distance = sqrt( pow( yi, 2.0 ) + pow( xi * inverse_ar, 2.0 ) );
             if( distance <= y ) {
                 sum += texture2D( texture, f_uv + vec2( yi, xi ) * 0.004 ) * 0.25;
