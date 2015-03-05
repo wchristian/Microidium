@@ -22,6 +22,7 @@ use OpenGL::Image;
 use Math::Trig qw' rad2deg ';
 use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Carp 'confess';
+use List::Util 'min';
 
 use Microidium::Helpers 'dfile';
 
@@ -32,8 +33,8 @@ has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 has display_scale      => ( is => 'rw', default => sub { 600 } );
 has width              => ( is => 'rw', default => sub { 800 } );
 has height             => ( is => 'rw', default => sub { 600 } );
-has fb_width           => ( is => 'rw', default => sub { 800 } );
 has fb_height          => ( is => 'rw', default => sub { 600 } );
+has fb_height_max      => ( is => 'rw', default => sub { 600 } );
 has aspect_ratio       => ( is => 'rw', default => sub { 800 / 600 } );
 has sprite_size        => ( is => 'rw', default => sub { 160 } );
 has fov                => ( is => 'rw', default => sub { 90 } );
@@ -50,7 +51,7 @@ has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniform
 has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
-has fbo              => ( is => "rw" );
+has fbos             => ( is => 'rw', default => sub { {} } );
 
 BEGIN {
     my @gl_constants = qw(
@@ -96,8 +97,8 @@ sub _build_app {
 
     $self->init_sprites;
     $self->init_text_2D( dfile "courier.tga" );
-    $self->init_fbo;
     $self->init_screen_target;
+    $self->init_post_process;
 
     return $app;
 }
@@ -133,8 +134,14 @@ sub on_videoresize {
     glUseProgramObjectARB $self->shaders->{sprites};
     glUniform1fARB $self->uniforms->{sprites}{aspect_ratio}, $self->aspect_ratio;
 
+    glUseProgramObjectARB $self->shaders->{post_process};
+    glUniform1fARB $self->uniforms->{post_process}{aspect_ratio}, $self->aspect_ratio;
+
     glUseProgramObjectARB $self->shaders->{text};
     glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
+
+    $self->fb_height( min( $self->fb_height_max, $self->height ) );
+    $self->init_fbo( $_ ) for qw( screen_target post_process );
 
     return;
 }
@@ -174,14 +181,20 @@ sub render {
     my $game_state = $self->game_state;
 
     my $now = time;
-    glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbo;    # render target: fbo
-    glViewport( 0, 0, $self->fb_width, $self->fb_height );
+    glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{post_process};
+    glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_world( $game_state );
     $self->smooth_update( world_time => time - $now );
 
-    glBindFramebufferEXT GL_FRAMEBUFFER, 0;                  # render target: screen
+    glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{screen_target};
+    glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
+    glClearColor 0.0, 0, 0, 0;
+    glClear GL_COLOR_BUFFER_BIT;
+    $self->render_post_process;
+
+    glBindFramebufferEXT GL_FRAMEBUFFER, 0;    # screen
     glViewport( 0, 0, $self->width, $self->height );
     glClearColor 0, 0, 0, 0;
     glClear GL_COLOR_BUFFER_BIT;
@@ -219,14 +232,14 @@ sub glGetUniformLocationARB_p_safe {
 }
 
 sub init_fbo {
-    my ( $self ) = @_;
+    my ( $self, $name ) = @_;
 
-    my @dim = ( $self->fb_width, $self->fb_height );
+    my @dim = ( $self->fb_height * $self->aspect_ratio, $self->fb_height );
     my $textures = $self->textures;
 
     # color texture
-    $textures->{fbo_color} = glGenTextures_p 1;
-    glBindTexture GL_TEXTURE_2D,   $textures->{fbo_color};
+    my $color = $textures->{"fbo_color_$name"} = glGenTextures_p 1;
+    glBindTexture GL_TEXTURE_2D,   $color;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
@@ -234,8 +247,8 @@ sub init_fbo {
     glTexImage2D_c GL_TEXTURE_2D,  0, GL_RGBA, @dim, 0, GL_RGBA, GL_FLOAT, 0;
 
     # depth texture
-    $textures->{fbo_depth} = glGenTextures_p 1;
-    glBindTexture GL_TEXTURE_2D,   $textures->{fbo_depth};
+    my $depth = $textures->{"fbo_depth_$name"} = glGenTextures_p 1;
+    glBindTexture GL_TEXTURE_2D,   $depth;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
@@ -243,12 +256,12 @@ sub init_fbo {
     glTexImage2D_c GL_TEXTURE_2D,  0, GL_DEPTH_COMPONENT, @dim, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0;
 
     # fbo
-    $self->fbo( glGenFramebuffersEXT_p 1 );
-    glBindFramebufferEXT GL_FRAMEBUFFER, $self->fbo;
+    $self->fbos->{$name} = glGenFramebuffersEXT_p 1;
+    glBindFramebufferEXT GL_FRAMEBUFFER, $self->fbos->{$name};
 
     # attach textures to fbo
-    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, $textures->{fbo_color}, 0;
-    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,      GL_TEXTURE_2D, $textures->{fbo_depth}, 0;
+    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, $color, 0;
+    glFramebufferTexture2DEXT GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,      GL_TEXTURE_2D, $depth, 0;
 
     my $Status = glCheckFramebufferStatusEXT GL_FRAMEBUFFER;
     die "FB error, status: 0x%x\n", $Status if $Status != GL_FRAMEBUFFER_COMPLETE;
@@ -256,17 +269,34 @@ sub init_fbo {
     return;
 }
 
+sub init_post_process {
+    my ( $self ) = @_;
+
+    $self->init_fbo( "post_process" );
+
+    $self->shaders->{post_process} = $self->load_shader_set( map dfile "post_process.$_", qw( vert frag geom ) );
+    $self->uniforms->{post_process}{$_} = $self->glGetUniformLocationARB_p_safe( "post_process", $_ )
+      for qw( texture display_scale aspect_ratio );
+
+    glUseProgramObjectARB $self->shaders->{post_process};
+    glUniform1fARB $self->uniforms->{post_process}{display_scale}, $self->display_scale;
+    glUniform1fARB $self->uniforms->{post_process}{aspect_ratio},  $self->aspect_ratio;
+    glUniform1iARB $self->uniforms->{post_process}{texture},       0;
+
+    return;
+}
+
 sub init_screen_target {
     my ( $self ) = @_;
 
+    $self->init_fbo( "screen_target" );
+
     $self->shaders->{screen_target} = $self->load_shader_set( map dfile "screen_target.$_", qw( vert frag geom ) );
     $self->uniforms->{screen_target}{$_} = $self->glGetUniformLocationARB_p_safe( "screen_target", $_ )
-      for qw( texture display_scale aspect_ratio );
+      for qw( texture   );
 
     glUseProgramObjectARB $self->shaders->{screen_target};
-    glUniform1fARB $self->uniforms->{screen_target}{display_scale}, $self->display_scale;
-    glUniform1fARB $self->uniforms->{screen_target}{aspect_ratio},  $self->aspect_ratio;
-    glUniform1iARB $self->uniforms->{screen_target}{texture},       0;
+    glUniform1iARB $self->uniforms->{screen_target}{texture}, 0;
 
     return;
 }
@@ -412,6 +442,21 @@ sub send_sprite_datas {
     return;
 }
 
+sub render_post_process {
+    my ( $self ) = @_;
+
+    glUseProgramObjectARB $self->shaders->{post_process};
+    glActiveTextureARB GL_TEXTURE0;
+    glEnable GL_BLEND;
+    glBlendFunc GL_ONE, GL_ONE_MINUS_SRC_ALPHA;
+
+    glBindTexture GL_TEXTURE_2D, $self->textures->{fbo_color_post_process};
+    glDrawArrays GL_POINTS, 0, 1;
+    glDisable GL_BLEND;
+
+    return;
+}
+
 sub render_screen_target {
     my ( $self ) = @_;
 
@@ -420,7 +465,7 @@ sub render_screen_target {
     glEnable GL_BLEND;
     glBlendFunc GL_ONE, GL_ONE_MINUS_SRC_ALPHA;
 
-    glBindTexture GL_TEXTURE_2D, $self->textures->{fbo_color};
+    glBindTexture GL_TEXTURE_2D, $self->textures->{fbo_color_screen_target};
     glDrawArrays GL_POINTS, 0, 1;
     glDisable GL_BLEND;
 
