@@ -204,8 +204,7 @@ sub glGetAttribLocationARB_p_safe {
     my ( $self, $shader_name, $attrib_name ) = @_;
     my $shader = $self->shaders->{$shader_name};
     my $ret = glGetAttribLocationARB_p $shader, $attrib_name;
-
-    #die "Could not find attribute '$attrib_name' in '$shader_name'" if $ret == -1;
+    die "Could not find attribute '$attrib_name' in '$shader_name'" if $ret == -1;
     return $ret;
 }
 
@@ -213,8 +212,7 @@ sub glGetUniformLocationARB_p_safe {
     my ( $self, $shader_name, $attrib_name ) = @_;
     my $shader = $self->shaders->{$shader_name};
     my $ret = glGetUniformLocationARB_p $shader, $attrib_name;
-
-    #die "Could not find uniform '$attrib_name' in '$shader_name'" if $ret == -1;
+    die "Could not find uniform '$attrib_name' in '$shader_name'" if $ret == -1;
     return $ret;
 }
 
@@ -258,19 +256,14 @@ sub init_fbo {
 sub init_screen_target {
     my ( $self ) = @_;
 
-    $self->new_vbo( $_ ) for qw( screen_target );
-
     $self->shaders->{screen_target} = $self->load_shader_set( map dfile "screen_target.$_", qw( vert frag geom ) );
     $self->uniforms->{screen_target}{$_} = $self->glGetUniformLocationARB_p_safe( "screen_target", $_ )
-      for qw( texture camera display_scale aspect_ratio sprite_size fov );
-    $self->attribs->{screen_target}{$_} = $self->glGetAttribLocationARB_p_safe( "screen_target", $_ )
-      for qw( color offset rotation scale );
+      for qw( texture display_scale aspect_ratio );
 
     glUseProgramObjectARB $self->shaders->{screen_target};
     glUniform1fARB $self->uniforms->{screen_target}{display_scale}, $self->display_scale;
     glUniform1fARB $self->uniforms->{screen_target}{aspect_ratio},  $self->aspect_ratio;
-    glUniform1fARB $self->uniforms->{screen_target}{sprite_size},   $self->sprite_size;
-    glUniform1fARB $self->uniforms->{screen_target}{fov},           $self->fov;
+    glUniform1iARB $self->uniforms->{screen_target}{texture},       0;
 
     return;
 }
@@ -420,43 +413,13 @@ sub render_screen_target {
     my ( $self ) = @_;
 
     glUseProgramObjectARB $self->shaders->{screen_target};
-
-    my $uniforms = $self->uniforms->{screen_target};
-    glUniform2fARB $uniforms->{camera}, 0, 0;
-
     glActiveTextureARB GL_TEXTURE0;
-
-    my $attribs = $self->attribs->{screen_target};
-    glEnableVertexAttribArrayARB $attribs->{color};
-    glEnableVertexAttribArrayARB $attribs->{offset};
-    glEnableVertexAttribArrayARB $attribs->{rotation};
-    glEnableVertexAttribArrayARB $attribs->{scale};
-
-    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{screen_target};
-
     glEnable GL_BLEND;
     glBlendFunc GL_ONE, GL_ONE_MINUS_SRC_ALPHA;
 
-    my $value_count = 4 + 3 + 1 + 1;
-    my $stride      = 4 * $value_count;    # bytes * counts
-    glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
-    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
-
     glBindTexture GL_TEXTURE_2D, $self->textures->{fbo_color};
-    glUniform1iARB $uniforms->{texture}, 0;
-    my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, ( 1, 1, 1, 1 ), ( 0, 0, 0 ), 0, 10 );
-    glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
-
     glDrawArrays GL_POINTS, 0, 1;
-
     glDisable GL_BLEND;
-
-    glDisableVertexAttribArrayARB $attribs->{color};
-    glDisableVertexAttribArrayARB $attribs->{offset};
-    glDisableVertexAttribArrayARB $attribs->{rotation};
-    glDisableVertexAttribArrayARB $attribs->{scale};
 
     return;
 }

@@ -1,7 +1,6 @@
 #version 330
 
 in vec2 f_uv;
-in vec4 f_color;
 
 uniform sampler2D texture;
 uniform float aspect_ratio;
@@ -14,9 +13,11 @@ void main() {
 
     float y = display_scale / 200;
     float x = y * aspect_ratio;
+    float inverse_ar = 1 / aspect_ratio;
+
     for( float xi = -x ; xi < x ; xi += 1.0 ) {
         for ( float yi = -y ; yi < y ; yi += 1.0 ) {
-            float distance = sqrt( pow( yi, 2.0 ) + pow( xi / aspect_ratio, 2.0 ) );
+            float distance = sqrt( pow( yi, 2.0 ) + pow( xi * inverse_ar, 2.0 ) );
             if( distance <= y ) {
                 sum += texture2D( texture, f_uv + vec2( yi, xi ) * 0.004 ) * 0.25;
             }
