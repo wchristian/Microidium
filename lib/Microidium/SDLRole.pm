@@ -32,6 +32,8 @@ has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 has display_scale      => ( is => 'rw', default => sub { 600 } );
 has width              => ( is => 'rw', default => sub { 800 } );
 has height             => ( is => 'rw', default => sub { 600 } );
+has fb_width           => ( is => 'rw', default => sub { 800 } );
+has fb_height          => ( is => 'rw', default => sub { 600 } );
 has aspect_ratio       => ( is => 'rw', default => sub { 800 / 600 } );
 has sprite_size        => ( is => 'rw', default => sub { 160 } );
 has fov                => ( is => 'rw', default => sub { 90 } );
@@ -134,8 +136,6 @@ sub on_videoresize {
     glUseProgramObjectARB $self->shaders->{text};
     glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
 
-    glViewport( 0, 0, $self->width, $self->height );
-
     return;
 }
 
@@ -175,12 +175,14 @@ sub render {
 
     my $now = time;
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbo;    # render target: fbo
+    glViewport( 0, 0, $self->fb_width, $self->fb_height );
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_world( $game_state );
     $self->smooth_update( world_time => time - $now );
 
     glBindFramebufferEXT GL_FRAMEBUFFER, 0;                  # render target: screen
+    glViewport( 0, 0, $self->width, $self->height );
     glClearColor 0, 0, 0, 0;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_screen_target;
@@ -219,7 +221,7 @@ sub glGetUniformLocationARB_p_safe {
 sub init_fbo {
     my ( $self ) = @_;
 
-    my @dim = ( $self->width, $self->height );
+    my @dim = ( $self->fb_width, $self->fb_height );
 
     # color texture
     $self->textures->{fbo_color} = $self->color_texture( glGenTextures_p 1 );
