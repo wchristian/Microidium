@@ -1,5 +1,7 @@
 package PryoNet::LoopRole;
 
+use strictures;
+
 # VERSION
 
 use Moo::Role;

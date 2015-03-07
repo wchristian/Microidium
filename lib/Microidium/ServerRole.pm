@@ -1,5 +1,7 @@
 package Microidium::ServerRole;
 
+use strictures;
+
 # VERSION
 
 use PryoNet::Server;

@@ -1,5 +1,7 @@
 package Microidium::Server;
 
+use strictures;
+
 # VERSION
 
 use Moo;

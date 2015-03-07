@@ -1,5 +1,7 @@
 package Microidium::LogicRole;
 
+use strictures;
+
 # VERSION
 
 use List::Util qw( first min max );

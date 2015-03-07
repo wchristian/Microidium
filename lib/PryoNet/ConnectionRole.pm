@@ -1,5 +1,7 @@
 package PryoNet::ConnectionRole;
 
+use strictures;
+
 use Moo::Role;
 
 has tcp => ( is => 'rw' );

@@ -1,5 +1,7 @@
 package PryoNet::ServerRole;
 
+use strictures;
+
 # VERSION
 
 use IO::Async::Loop;

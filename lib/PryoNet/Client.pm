@@ -1,5 +1,7 @@
 package PryoNet::Client;
 
+use strictures;
+
 # VERSION
 
 use Moo;

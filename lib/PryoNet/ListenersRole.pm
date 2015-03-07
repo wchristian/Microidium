@@ -1,5 +1,7 @@
 package PryoNet::ListenersRole;
 
+use strictures;
+
 # VERSION
 
 use Moo::Role;

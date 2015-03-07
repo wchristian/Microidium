@@ -1,5 +1,7 @@
 package Microidium::ClientRole;
 
+use strictures;
+
 # VERSION
 
 use lib '..';

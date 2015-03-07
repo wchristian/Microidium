@@ -1,5 +1,7 @@
 package PryoNet::ClientRole;
 
+use strictures;
+
 # VERSION
 
 use IO::Async::Loop;

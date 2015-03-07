@@ -1,5 +1,7 @@
 package microidium;
 
+use strictures;
+
 # VERSION
 
 use lib '../lib';

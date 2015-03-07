@@ -1,6 +1,6 @@
-use strictures;
-
 package OpenGL::Debug;
+
+use strictures;
 
 use Sub::Install 'install_sub';
 use Acme::MITHALDU::BleedingOpenGL qw( GL_NO_ERROR glGetError gluErrorString );

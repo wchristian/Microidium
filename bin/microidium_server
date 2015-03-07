@@ -1,5 +1,7 @@
 package microidium_server;
 
+use strictures;
+
 # VERSION
 
 use lib '../lib';

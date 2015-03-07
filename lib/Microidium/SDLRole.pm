@@ -1,5 +1,7 @@
 package Microidium::SDLRole;
 
+use strictures;
+
 # VERSION
 
 use 5.010;

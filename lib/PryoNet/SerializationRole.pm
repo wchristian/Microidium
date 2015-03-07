@@ -1,5 +1,7 @@
 package PryoNet::SerializationRole;
 
+use strictures;
+
 # VERSION
 
 use Sereal qw( encode_sereal decode_sereal );

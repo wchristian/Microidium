@@ -1,5 +1,7 @@
 package Microidium::Helpers;
 
+use strictures;
+
 # VERSION
 
 use Sub::Exporter::Simple 'dfile';
