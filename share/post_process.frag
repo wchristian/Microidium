@@ -9,23 +9,20 @@ uniform float display_scale;
 out vec4 FragColor;
 
 void main() {
+    float glow_influence_units = 2.0; // how big a step is in ingame units
+    float steps = 5.0;                // amount of steps in plus and minus direction
+
+    float y_size = glow_influence_units / display_scale; // size of a step on y axis in pixels
+    float x_size = y_size / aspect_ratio;                // size of a step on x axis in pixels
+
     vec4 sum = vec4(0);
-
-    float y = display_scale / 200;
-    float x = y / aspect_ratio;
-    float inverse_ar = 1 / aspect_ratio;
-    float ysteps = 7;
-    float xsteps = 7;
-    float y_size = 2.0 * y / ysteps;
-    float x_size = 2.0 * x / xsteps;
-
-    for ( float ystepsi = -ysteps ; ystepsi < ysteps ; ystepsi++ ) {
+    for ( float ystepsi = -steps ; ystepsi <= steps ; ystepsi++ ) {
         float yi = ystepsi * y_size;
-        for ( float xstepsi = -xsteps ; xstepsi < xsteps ; xstepsi++ ) {
+        for ( float xstepsi = -steps ; xstepsi <= steps ; xstepsi++ ) {
             float xi = xstepsi * x_size;
-            float distance = sqrt( pow( yi, 2.0 ) + pow( xi / inverse_ar, 2.0 ) );
-            if( distance <= y ) {
-                sum += texture2D( texture, f_uv + vec2( xi, yi ) * 0.004 ) * 0.25;
+            float distance = sqrt( pow( ystepsi, 2.0 ) + pow( xstepsi, 2.0 ) );
+            if( distance <= steps ) {
+                sum += texture2D( texture, f_uv + vec2( xi, yi ) ) * 0.1;
             }
         }
     }
