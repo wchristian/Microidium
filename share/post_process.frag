@@ -11,6 +11,7 @@ out vec4 FragColor;
 void main() {
     float glow_influence_units = 2.0; // how big a step is in ingame units
     float steps = 5.0;                // amount of steps in plus and minus direction
+    float glow_influence_strength = 1.0 / 10.0; // maximum influence of any sampled location
 
     float y_size = glow_influence_units / display_scale; // size of a step on y axis in pixels
     float x_size = y_size / aspect_ratio;                // size of a step on x axis in pixels
@@ -22,10 +23,11 @@ void main() {
             float xi = xstepsi * x_size;
             float distance = sqrt( pow( ystepsi, 2.0 ) + pow( xstepsi, 2.0 ) );
             if( distance <= steps ) {
-                sum += texture2D( texture, f_uv + vec2( xi, yi ) ) * 0.1;
+                sum += texture2D( texture, f_uv + vec2( xi, yi ) );
             }
         }
     }
+    sum *= glow_influence_strength;
 
     vec4 sample = texture2D( texture, f_uv );
     float val = (sample.r + sample.g + sample.b + sample.a) / 4;
