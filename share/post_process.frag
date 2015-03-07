@@ -22,9 +22,9 @@ void main() {
         for ( float xstepsi = -steps ; xstepsi <= steps ; xstepsi++ ) {
             float xi = xstepsi * x_size;
             float distance = sqrt( pow( ystepsi, 2.0 ) + pow( xstepsi, 2.0 ) );
-            if( distance <= steps ) {
-                sum += texture2D( texture, f_uv + vec2( xi, yi ) );
-            }
+            if( distance > steps )
+              continue;
+            sum += texture2D( texture, f_uv + vec2( xi, yi ) );
         }
     }
     sum *= glow_influence_strength;
