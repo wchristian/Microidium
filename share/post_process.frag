@@ -8,6 +8,12 @@ uniform float display_scale;
 
 out vec4 FragColor;
 
+// should be converted to this sometime : http://prideout.net/archive/bloom/
+// note, the gauss curve matrix probably isn't very good
+// also see: https://github.com/AnalyticalGraphicsInc/cesium/blob/master/Source/Shaders/PostProcessFilters/BrightPass.glsl
+// http://kalogirou.net/2006/05/20/how-to-do-good-bloom-for-hdr-rendering/
+// http://www.curious-creature.com/2007/02/20/fast-image-processing-with-jogl/
+// https://software.intel.com/en-us/blogs/2014/07/15/an-investigation-of-fast-real-time-gpu-based-image-blur-algorithms
 
 void main() {
     float glow_influence_units = 2.5; // how big a step is in ingame units
