@@ -445,6 +445,13 @@ sub render_ui {
     $self->print_text_2D( [ 0, $self->height - 12 ],
         "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" );
 
+    $self->print_text_2D(
+        [ 0, 70 ],
+        sprintf "Render-Resolution: %d x %d = %.2f MPix",
+        $self->aspect_ratio * $self->fb_height,
+        $self->fb_height, $self->aspect_ratio * $self->fb_height * $self->fb_height / 1_000_000
+    );
+
     $self->print_text_2D( [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count );
 
     $self->print_text_2D(
