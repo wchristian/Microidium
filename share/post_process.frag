@@ -12,7 +12,7 @@ void main() {
     vec4 sum = vec4(0);
 
     float y = display_scale / 200;
-    float x = y * aspect_ratio;
+    float x = y / aspect_ratio;
     float inverse_ar = 1 / aspect_ratio;
     float ysteps = 7;
     float xsteps = 7;
@@ -23,9 +23,9 @@ void main() {
         float yi = ystepsi * y_size;
         for ( float xstepsi = -xsteps ; xstepsi < xsteps ; xstepsi++ ) {
             float xi = xstepsi * x_size;
-            float distance = sqrt( pow( yi, 2.0 ) + pow( xi * inverse_ar, 2.0 ) );
+            float distance = sqrt( pow( yi, 2.0 ) + pow( xi / inverse_ar, 2.0 ) );
             if( distance <= y ) {
-                sum += texture2D( texture, f_uv + vec2( yi, xi ) * 0.004 ) * 0.25;
+                sum += texture2D( texture, f_uv + vec2( xi, yi ) * 0.004 ) * 0.25;
             }
         }
     }
