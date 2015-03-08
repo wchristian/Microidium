@@ -73,5 +73,6 @@ use Moo;
 with "Microidium::LogicRole";
 with "Microidium::ClientRole";
 with "Microidium::SDLRole";
+with "Microidium::ClientCameraRole";
 
 1;
