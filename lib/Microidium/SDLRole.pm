@@ -37,7 +37,6 @@ has width              => ( is => 'rw', default => sub { 800 } );
 has height             => ( is => 'rw', default => sub { 600 } );
 has fb_height          => ( is => 'rw', default => sub { 600 } );
 has fb_height_max      => ( is => 'rw', default => sub { 600 } );
-has aspect_ratio       => ( is => 'rw', default => sub { 800 / 600 } );
 has sprite_size        => ( is => 'rw', default => sub { 160 } );
 has fov                => ( is => 'rw', default => sub { 90 } );
 has frame              => ( is => 'rw', default => sub { 0 } );
@@ -127,12 +126,13 @@ sub on_event {
     return;
 }
 
+sub aspect_ratio { my $self = shift; $self->width / $self->height }
+
 sub on_videoresize {
     my ( $self, $event ) = @_;
 
     $self->width( $event->resize_w );
     $self->height( $event->resize_h );
-    $self->aspect_ratio( $self->width / $self->height );
 
     glUseProgramObjectARB $self->shaders->{sprites};
     glUniform1fARB $self->uniforms->{sprites}{aspect_ratio}, $self->aspect_ratio;
