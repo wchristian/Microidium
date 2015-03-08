@@ -280,6 +280,16 @@ sub render_world {
                   ];
 
                 if ( !$flier->{is_bullet} ) {
+                    {
+                        my @color = @{ $c->{ $flier->{team} } };
+                        if (   $flier->{y} < $self->game_state->{floor}
+                            or $flier->{y} > $self->game_state->{ceiling} )
+                        {
+                            $color[$_] *= 0.5 for 0 .. 2;
+                        }
+                        push @sprites,
+                          [ [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, "player1_wings", 1 ];
+                    }
                     my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
                     push @{ $trail->{segments} },
                       [ map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 ];
@@ -294,7 +304,7 @@ sub render_world {
                       is_turning_right thrust_right_flame
                       is_turning_left  thrust_left_flame
                     );
-                    push @sprites, [ [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, $flames{$_} ]
+                    push @sprites, [ [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, $flames{$_}, 1 ]
                       for grep { $flier->{$_} } keys %flames;
                 }
             }

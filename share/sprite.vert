@@ -4,6 +4,7 @@ layout (location = 0) in vec4 color;
 layout (location = 1) in vec3 offset;
 layout (location = 2) in float rotation;
 layout (location = 3) in float scale;
+layout (location = 4) in float r_scale;
 
 uniform vec2 camera;
 uniform float display_scale;
@@ -34,8 +35,16 @@ void main() {
         0.0,              0.0,               0.0,  1.0
     );
 
+    float scale_x = scale;
+    if( r_scale != 0.0 ) {
+        float target = rotation < 180.0 ? 90.0 : 270.0;
+        float rot_diff = abs( target - rotation );
+        rot_diff /= 90.0;
+        scale_x *= rot_diff;
+    }
+
     mat4 scale_mat = mat4(
-        0.5 * scale,    0.0,            0.0,            0.0,
+        0.5 * scale_x,  0.0,            0.0,            0.0,
         0.0,            0.5 * scale,    0.0,            0.0,
         0.0,            0.0,            0.5 * scale,    0.0,
         0.0,            0.0,            1.0,            1.0

@@ -314,7 +314,7 @@ sub init_sprites {
     $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
       for qw( texture camera display_scale aspect_ratio sprite_size fov );
     $self->attribs->{sprites}{$_} = $self->glGetAttribLocationARB_p_safe( "sprites", $_ )
-      for qw( color offset rotation scale );
+      for qw( color offset rotation scale r_scale );
 
     glUseProgramObjectARB $self->shaders->{sprites};
     glUniform1fARB $self->uniforms->{sprites}{display_scale}, $self->display_scale;
@@ -322,7 +322,8 @@ sub init_sprites {
     glUniform1fARB $self->uniforms->{sprites}{sprite_size},   $self->sprite_size;
     glUniform1fARB $self->uniforms->{sprites}{fov},           $self->fov;
 
-    $self->sprite_tex_order( [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1 bullet )] );
+    $self->sprite_tex_order(
+        [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1_wings player1 bullet )] );
     $self->textures->{$_} = $self->load_texture( dfile "$_.tga" ) for @{ $self->sprite_tex_order };
 
     return;
@@ -392,18 +393,20 @@ sub with_sprite_setup_render {
     glEnableVertexAttribArrayARB $attribs->{offset};
     glEnableVertexAttribArrayARB $attribs->{rotation};
     glEnableVertexAttribArrayARB $attribs->{scale};
+    glEnableVertexAttribArrayARB $attribs->{r_scale};
 
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{sprite};
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
-    my $value_count = 4 + 3 + 1 + 1;
+    my $value_count = 4 + 3 + 1 + 1 + 1;
     my $stride      = 4 * $value_count;    # bytes * counts
     glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
     glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
     glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
     glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{r_scale},  1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 + 1 ) * 4;
 
     for my $tex ( @{ $self->sprite_tex_order } ) {
         glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
@@ -423,6 +426,7 @@ sub with_sprite_setup_render {
     glDisableVertexAttribArrayARB $attribs->{offset};
     glDisableVertexAttribArrayARB $attribs->{rotation};
     glDisableVertexAttribArrayARB $attribs->{scale};
+    glDisableVertexAttribArrayARB $attribs->{r_scale};
 
     return;
 }
@@ -436,11 +440,12 @@ sub send_sprite_data {
 sub send_sprite_datas {
     my ( $self, @datas ) = @_;
     for my $sprite ( @datas ) {
-        my ( $location, $color, $rotation, $scale, $texture ) = @{$sprite};
+        my ( $location, $color, $rotation, $scale, $texture, $r_scale ) = @{$sprite};
         $location->[2] //= 0;
         $color ||= [ 1, 1, 1, 1 ];
-        $scale //= 1;
-        push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale ];
+        $scale   //= 1;
+        $r_scale //= 0;
+        push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale, $r_scale ];
     }
     return;
 }
