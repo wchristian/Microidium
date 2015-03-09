@@ -392,38 +392,45 @@ sub render_ui {
     $self->print_text_2D( [ 0, 90 ], "Perl v$]" );
 
     $self->print_text_2D(
+        [ 0, 80 ],
+        sprintf
+          "Viewport: %d x %d = %.2f MPix",
+        $self->width, $self->height, $self->width * $self->height / 1_000_000
+
+    );
+
+    $self->print_text_2D(
         [ 0, 70 ],
-        sprintf "Render-Resolution: %d x %d = %.2f MPix",
+        sprintf "Render: %d x %d = %.2f MPix",
         $self->aspect_ratio * $self->fb_height,
         $self->fb_height, $self->aspect_ratio * $self->fb_height * $self->fb_height / 1_000_000
     );
 
     $self->print_text_2D( [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count );
 
-    $self->print_text_2D(
-        [ 0, 50 ],
-        sprintf "Audio channels:|%s|",
-        join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31
-    );
-    $self->print_text_2D( [ 0, 40 ], "HP: $player_actor->{hp}" ) if $player_actor;
-    $self->print_text_2D(
-        [ 0, 30 ],
-        "X Y R Speed: " . join ' ',
-        map sprintf( "% 8.2f", $_ ),
-        ( map $player_actor->{$_}, qw( x y rot ) ),
-        ( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )**0.5
-    ) if $player_actor;
+    $self->print_text_2D( [ 0, 50 ],
+        sprintf( "Audio channels:|%s|", join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31 ) );
+    if ( $player_actor ) {
+        $self->print_text_2D( [ 0, 40 ], "HP: $player_actor->{hp}" );
+        $self->print_text_2D(
+            [ 0, 30 ],
+            sprintf "X: % 8.2f / Y: % 8.2f / R: % 8.2f / Speed: % 8.2f",
+            ( map $player_actor->{$_}, qw( x y rot ) ),
+            ( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )**0.5
+        );
+    }
     $self->print_text_2D(
         [ 0, 20 ],
-        sprintf "FPS / Frame / Render / World / UI: %5.1f / %6.2f ms / %6.2f ms / %6.2f ms / %6.2f ms",
+        sprintf "FPS: %5.1f / Frame: %6.2f ms / Render: %6.2f ms / World: %6.2f ms / UI: %6.2f ms",
         1 / $self->frame_time,
         $self->frame_time * 1000,
         $self->render_time * 1000,
         $self->world_time * 1000,
         $self->ui_time * 1000,
     );
-    $self->print_text_2D( [ 0, 10 ], "Frame: " . $self->frame );
-    $self->print_text_2D( [], "Tick: " . $game_state->{tick} ) if $game_state->{tick};
+    my $tick = $game_state->{tick} || 0;
+    $self->print_text_2D( [ 0, 10 ],
+        sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ) );
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
