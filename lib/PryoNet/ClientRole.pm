@@ -4,14 +4,15 @@ use strictures;
 
 # VERSION
 
-use IO::Async::Loop;
-
 {    # preload these to avoid frame drops
     use IO::Async::Resolver;
     use IO::Async::Internals::Connector;
     use IO::Async::Future;
 }
 
+use IO::Async::Loop;
+use PryoNet::FrameWorkMessage::RegisterTCP;
+use PryoNet::FrameWorkMessage::RegisterUDP;
 use Moo::Role;
 
 has tcp => ( is => 'rw' );

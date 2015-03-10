@@ -27,7 +27,7 @@ sub run {
             my $players = $self->game_state->{players};
             $players->{ $connection->id } = { id => $connection->id, actor => undef, client_state => undef };
             printf "player connected %s ( %s total )\n", $connection->id, scalar values %{$players};
-            $connection->send_tcp( { network_player_id => $connection->id } );
+            $connection->send_tcp( bless { network_player_id => $connection->id }, "Microidium::GiveConnectionId" );
             return;
         },
         disconnected => sub {
@@ -55,7 +55,7 @@ sub run {
             my $new_game_state = clone $self->game_state;
             $self->update_game_state( $new_game_state );
             $self->game_state( $new_game_state );
-            $pryo->send_to_all_tcp( $new_game_state );
+            $pryo->send_to_all_udp( bless $new_game_state, "Microidium::Gamestate" );
         },
     );
 

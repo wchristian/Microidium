@@ -5,11 +5,14 @@ use strictures;
 # VERSION
 
 use Sereal qw( encode_sereal decode_sereal );
+use Scalar::Util 'blessed';
+use Carp 'confess';
 
 use Moo::Role;
 
 sub create_frame {
     my ( $self, $v ) = @_;
+    confess "only objects can be serialized" if !blessed $v;
     return pack 'N/a*', encode_sereal( $v );
 }
 

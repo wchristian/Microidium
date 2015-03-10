@@ -56,12 +56,15 @@ sub _build_pryo {
         received => sub {
             my ( $connection, $frame ) = @_;
             $self->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
-            if ( ref $frame and $frame->{tick} ) {
+            if ( $frame->isa( "Microidium::Gamestate" ) ) {
                 $self->last_network_state( $frame );
             }
-            elsif ( ref $frame and $frame->{network_player_id} ) {
+            elsif ( $frame->isa( "Microidium::GiveConnectionId" ) ) {
                 $self->log( "got network id: $frame->{network_player_id}" );
                 $self->network_player_id( $frame->{network_player_id} );
+            }
+            else {
+                die "received unknown frame: " . ref $frame;
             }
             return;
         },
@@ -136,7 +139,7 @@ sub on_keydown {
 
     if ( $self->in_network_game ) {
         $self->log( "sent: DOWN $sym" );
-        $self->pryo->send_tcp( $self->client_state );
+        $self->pryo->send_tcp( bless $self->client_state, "Microidium::Clientstate" );
     }
     return;
 }
