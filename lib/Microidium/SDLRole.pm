@@ -25,7 +25,7 @@ use Math::Trig qw' rad2deg ';
 use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Carp 'confess';
 use List::Util 'min';
-
+use Color::Mix;
 use Microidium::Helpers 'dfile';
 
 use Moo::Role;
@@ -53,6 +53,19 @@ has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
 has fbos             => ( is => 'rw', default => sub { {} } );
+
+has timings_max        => ( is => 'rw', default => sub { 18 } );
+has timings_max_frames => ( is => 'rw', default => sub { 180 } );
+has timings            => ( is => 'lazy' );
+has timestamps         => ( is => 'rw', default => sub { [] } );
+
+sub _build_timings {
+    my ( $self ) = @_;
+    return {
+        list => [ map { $_, ( 0, 0 ) x $self->timings_max } 0 .. $self->timings_max_frames - 1 ],
+        pointer => 0,
+    };
+}
 
 BEGIN {
     my %gl_constants = map { $_ => 1 } qw(
@@ -101,6 +114,7 @@ sub _build_app {
     $self->init_text_2D( dfile "courier.tga" );
     $self->init_screen_target;
     $self->init_post_process;
+    $self->init_timings;
 
     return $app;
 }
@@ -118,11 +132,13 @@ sub _build_event_handlers {
 
 sub on_event {
     my ( $self, $event ) = @_;
+    push $self->timestamps, [ event_start => time ];
     my $type     = $event->type;
     my $handlers = $self->event_handlers;
     die "unknown event type: $type" if !exists $handlers->{$type};
-    return unless my $meth = $handlers->{$type};
-    $self->$meth( $event );
+    my $meth = $handlers->{$type};
+    $self->$meth( $event ) if $meth;
+    push $self->timestamps, [ event_end => time ];
     return;
 }
 
@@ -143,6 +159,10 @@ sub on_videoresize {
     glUseProgramObjectARB $self->shaders->{text};
     glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
 
+    glUseProgramObjectARB $self->shaders->{timings};
+    glUniform1fARB $self->uniforms->{timings}{pixel_width},  2 / $self->width;
+    glUniform1fARB $self->uniforms->{timings}{pixel_height}, 2 / $self->height;
+
     $self->fb_height( min( $self->fb_height_max, $self->height ) );
     $self->init_fbo( $_ ) for qw( screen_target post_process );
 
@@ -159,9 +179,11 @@ sub change_fov {
 
 sub on_move {
     my ( $self ) = @_;
+    push $self->timestamps, [ move_start => time ];
     my $new_game_state = clone $self->game_state;
     $self->update_game_state( $new_game_state, $self->client_state );
     $self->game_state( $new_game_state );
+    push $self->timestamps, [ move_end => time ];
     return;
 }
 
@@ -169,12 +191,17 @@ sub on_show {
     my ( $self ) = @_;
     $self->frame( $self->frame + 1 );
     $self->last_frame_time( $self->current_frame_time );
+    push $self->timestamps, [ frame_start => time ];
     my $now = time;
     $self->current_frame_time( $now );
-    $self->smooth_update( frame_time => $now - $self->last_frame_time );
+    my $elapsed = $now - $self->last_frame_time;
+    $self->smooth_update( frame_time => $elapsed );
     $self->render;
     $self->smooth_update( render_time => time - $now );
+    $self->render_timings;
+
     $self->sync;
+    push $self->timestamps, [ sync_end => time ];
     return;
 }
 
@@ -190,22 +217,26 @@ sub render {
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_world( $game_state );
     $self->smooth_update( world_time => time - $now );
+    push $self->timestamps, [ world_render_end => time ];
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{screen_target};
     glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
     glClearColor 0.0, 0, 0, 0;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_post_process;
+    push $self->timestamps, [ postprocess_render_end => time ];
 
     glBindFramebufferEXT GL_FRAMEBUFFER, 0;    # screen
     glViewport( 0, 0, $self->width, $self->height );
     glClearColor 0, 0, 0, 0;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_screen_target;
+    push $self->timestamps, [ screen_render_end => time ];
 
     my $now2 = time;
     $self->render_ui( $game_state );
     $self->smooth_update( ui_time => time - $now2 );
+    push $self->timestamps, [ ui_render_end => time ];
 
     return;
 }
@@ -342,6 +373,128 @@ sub init_text_2D {
     glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
 
     $self->textures->{text} = $self->load_texture( $path );
+
+    return;
+}
+
+sub init_timings {
+    my ( $self ) = @_;
+
+    $self->new_vbo( $_ ) for qw( timings );
+
+    $self->shaders->{timings} = $self->load_shader_set( map dfile "timings.$_", qw( vert frag geom ) );
+    $self->uniforms->{timings}{$_} = $self->glGetUniformLocationARB_p_safe( "timings", $_ )
+      for qw( timings_max_frames pixel_width pixel_height pointer );
+    $self->attribs->{timings}{$_} = $self->glGetAttribLocationARB_p_safe( "timings", $_ )
+      for qw( index ), map "times$_", 1 .. $self->timings_max / 2;
+
+    glUseProgramObjectARB $self->shaders->{timings};
+    glUniform1fARB $self->uniforms->{timings}{timings_max_frames}, $self->timings_max_frames;
+    glUniform1fARB $self->uniforms->{timings}{pixel_width},        2 / $self->width;
+    glUniform1fARB $self->uniforms->{timings}{pixel_height},       2 / $self->height;
+
+    return;
+}
+
+sub timing_types() {
+    my @types = qw(
+      timings_render_end__sync_end
+      sync_end__event_start
+      sync_end__move_start
+      event_start__event_end
+      event_end__event_start
+      event_end__move_start
+      move_start__move_end
+      move_end__move_start
+      move_end__frame_start
+      frame_start__sprite_prepare_end
+      sprite_prepare_end__sprite_render_end
+      sprite_render_end__world_render_end
+      world_render_end__postprocess_render_end
+      postprocess_render_end__screen_render_end
+      screen_render_end__ui_render_end
+      ui_render_end__timings_render_start
+    );
+    my %types = map { $types[$_] => $_ } 0 .. $#types;
+    return %types;
+}
+
+sub render_timings {
+    my ( $self ) = @_;
+
+    push $self->timestamps, [ timings_render_start => time ];
+    my @time_stamps  = @{ $self->timestamps };
+    my %timing_types = timing_types();
+    my @current_timings;
+    for my $i ( 1 .. $#time_stamps ) {
+        my $end = $time_stamps[$i];
+        if ( $end ) {
+            my $start     = $time_stamps[ $i - 1 ];
+            my $type_name = "$start->[0]__$end->[0]";
+            my $type      = $timing_types{$type_name} // die "unknown type_name: $type_name";
+            my $elapsed   = $end->[1] - $start->[1];
+            if (
+                @current_timings
+                and (
+                    $type == $current_timings[-1]
+                    or (    $current_timings[-1] == $timing_types{event_start__event_end}
+                        and $type == $timing_types{event_end__event_start} )
+                    or (    $current_timings[-1] == $timing_types{move_start__move_end}
+                        and $type == $timing_types{move_end__move_start} )
+                )
+              )
+            {
+                $current_timings[-2] += $elapsed;
+            }
+            else {
+                push @current_timings, $elapsed, $type;
+            }
+        }
+    }
+    if ( @current_timings > 2 * $self->timings_max ) {
+        die "too many timings";
+    }
+    while ( @current_timings < 2 * $self->timings_max ) {
+        push @current_timings, 0, 0;
+    }
+
+    my $pointer = $self->timings->{pointer};
+    splice $self->timings->{list}, ( $pointer * ( 1 + ( 2 * $self->timings_max ) ) + 1 ), 2 * $self->timings_max,
+      @current_timings;
+
+    glUseProgramObjectARB $self->shaders->{timings};
+
+    my $uniforms = $self->uniforms->{timings};
+    glUniform1fARB $uniforms->{pointer}, $self->timings->{pointer};
+
+    my $attribs = $self->attribs->{timings};
+    glEnableVertexAttribArrayARB $attribs->{index};
+    glEnableVertexAttribArrayARB $attribs->{$_} for map "times$_", 1 .. $self->timings_max / 2;
+
+    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{timings};
+
+    glEnable GL_BLEND;
+    glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
+
+    my $value_count = 1 + ( 4 * $self->timings_max / 2 );
+    my $stride = 4 * $value_count;    # bytes * counts
+    glVertexAttribPointerARB_c $attribs->{index}, 1, GL_FLOAT, GL_FALSE, $stride, 0;
+    glVertexAttribPointerARB_c $attribs->{"times$_"}, 4, GL_FLOAT, GL_FALSE, $stride, ( 1 + ( 4 * ( $_ - 1 ) ) ) * 4
+      for 1 .. $self->timings_max / 2;
+
+    my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $self->timings->{list} } );
+    glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
+
+    glDrawArrays GL_POINTS, 0, $self->timings_max_frames;
+
+    glDisable GL_BLEND;
+
+    glDisableVertexAttribArrayARB $attribs->{index};
+    glDisableVertexAttribArrayARB $attribs->{$_} for map "times$_", 1 .. $self->timings_max / 2;
+
+    $pointer++;
+    $self->timings->{pointer} = $pointer >= $self->timings_max_frames ? $pointer - $self->timings_max_frames : $pointer;
+    $self->timestamps( [ [ timings_render_end => time ] ] );
 
     return;
 }
@@ -484,10 +637,11 @@ sub print_text_2D {
     my ( $self, $settings, $text ) = @_;
     my ( $x, $y, $size, $color ) = @{$settings};
 
-    $x     //= 0;
-    $y     //= 0;
-    $size  //= 16;
-    $color //= [ 1, 1, 1 ];
+    $x          //= 0;
+    $y          //= 0;
+    $size       //= 16;
+    $color      //= [ 1, 1, 1 ];
+    $color->[3] //= 1.0;
 
     my $size_x = $size / 2;
     my @chars  = split //, $text;
@@ -527,7 +681,7 @@ sub print_text_2D {
     glBindTexture GL_TEXTURE_2D, $self->textures->{text};
     glUniform1iARB $uniforms->{texture}, 0;
 
-    glUniform3fARB $uniforms->{color}, @{$color};
+    glUniform4fARB $uniforms->{color}, @{$color};
 
     my $attribs = $self->attribs->{text};
 

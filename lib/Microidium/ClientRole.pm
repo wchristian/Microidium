@@ -355,9 +355,11 @@ sub render_world {
                 $ex->{life} -= 0.1;
             }
 
+            push $self->timestamps, [ sprite_prepare_end => time ];
             $self->send_sprite_datas( @sprites );
         }
     );
+    push $self->timestamps, [ sprite_render_end => time ];
 
     my $player_actor = $self->local_player_actor;
     my $audio_pickup = $player_actor ? $player_actor : $cam;
@@ -424,15 +426,7 @@ sub render_ui {
             ( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )**0.5
         );
     }
-    $self->print_text_2D(
-        [ 0, 20 ],
-        sprintf "FPS: %5.1f / Frame: %6.2f ms / Render: %6.2f ms / World: %6.2f ms / UI: %6.2f ms",
-        1 / $self->frame_time,
-        $self->frame_time * 1000,
-        $self->render_time * 1000,
-        $self->world_time * 1000,
-        $self->ui_time * 1000,
-    );
+    $self->print_text_2D( [ 0, 20 ], sprintf "FPS: %5.1f", 1 / $self->frame_time );
     my $tick = $game_state->{tick} || 0;
     $self->print_text_2D( [ 0, 10 ],
         sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ) );
@@ -441,7 +435,40 @@ sub render_ui {
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
     $self->print_text_2D( [ 0, $self->height - 22 - $_ * 10 ], $to_display[$_] ) for 0 .. $#to_display;
 
+    my %timing_types  = $self->timing_types;
+    my @timing_colors = $self->timing_colors;
+    my $y             = 0;
+    my $x             = 70 + $self->width / 2;
+
+    for my $timing ( sort { $timing_types{$a} <=> $timing_types{$b} } keys %timing_types ) {
+        $self->print_text_2D( [ $x, $y, undef, $timing_colors[ $timing_types{$timing} ] ], $timing );
+        $y += 12;
+    }
+
     return;
+}
+
+sub timing_colors {
+    (
+        [ 0.000000, 0.000000, 1.000000, 0.5 ],
+        [ 0.564706, 0.000000, 1.000000, 0.5 ],
+        [ 1.000000, 0.000000, 0.866667, 0.5 ],
+        [ 1.000000, 0.000000, 0.298039, 0.5 ],
+        [ 1.000000, 0.282353, 0.000000, 0.5 ],
+        [ 1.000000, 0.850980, 0.000000, 0.5 ],
+        [ 0.584314, 1.000000, 0.000000, 0.5 ],
+        [ 0.015686, 1.000000, 0.000000, 0.5 ],
+        [ 0.000000, 1.000000, 0.568627, 0.5 ],
+        [ 0.000000, 0.866667, 1.000000, 0.5 ],
+        [ 0.000000, 0.298039, 1.000000, 0.5 ],
+        [ 0.266667, 0.000000, 1.000000, 0.5 ],
+        [ 0.850980, 0.000000, 1.000000, 0.5 ],
+        [ 1.000000, 0.000000, 0.584314, 0.5 ],
+        [ 1.000000, 0.000000, 0.015686, 0.5 ],
+        [ 1.000000, 0.549020, 0.000000, 0.5 ],
+        [ 0.866667, 1.000000, 0.000000, 0.5 ],
+        [ 0.301961, 1.000000, 0.000000, 0.5 ],
+    );
 }
 
 sub player_id {
