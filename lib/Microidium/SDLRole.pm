@@ -398,6 +398,7 @@ sub init_timings {
 
 sub timing_types() {
     my @types = qw(
+      timings_render_start__timings_render_end
       timings_render_end__sync_end
       sync_end__event_start
       sync_end__move_start
@@ -494,7 +495,7 @@ sub render_timings {
 
     $pointer++;
     $self->timings->{pointer} = $pointer >= $self->timings_max_frames ? $pointer - $self->timings_max_frames : $pointer;
-    $self->timestamps( [ [ timings_render_end => time ] ] );
+    $self->timestamps( [ $self->timestamps->[-1], [ timings_render_end => time ] ] );
 
     return;
 }
