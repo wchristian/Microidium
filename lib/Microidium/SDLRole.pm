@@ -365,8 +365,9 @@ sub init_text_2D {
 
     $self->new_vbo( $_ ) for qw( text_vertices );
 
-    $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag ) );
-    $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ ) for qw( texture color screen );
+    $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag geom ) );
+    $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ )
+      for qw( texture color screen size );
     $self->attribs->{text}{$_} = $self->glGetAttribLocationARB_p_safe( "text", $_ ) for qw( vertex );
 
     glUseProgramObjectARB $self->shaders->{text};
@@ -645,34 +646,9 @@ sub print_text_2D {
     $color->[3] //= 1.0;
 
     my $size_x = $size / 2;
-    my @chars  = split //, $text;
-    my $length = @chars;
+    my @chars = split //, $text;
 
-    my ( @vertices, @uvs );
-
-    for my $i ( 0 .. $length - 1 ) {
-        my @vertex_up_left = ( $x + $i * $size_x, $y + $size );
-        my @vertex_up_right   = ( $x + $i * $size_x + $size_x, $y + $size );
-        my @vertex_down_right = ( $x + $i * $size_x + $size_x, $y );
-        my @vertex_down_left = ( $x + $i * $size_x, $y );
-
-        my $char = ord $chars[$i];
-        my $uv_x = ( $char % 16 ) / 16;
-        my $uv_y = int( $char / 16 ) / 16;
-
-        my @uv_up_left = ( $uv_x, $uv_y );
-        my @uv_up_right   = ( $uv_x + 1 / 16, $uv_y );
-        my @uv_down_right = ( $uv_x + 1 / 16, $uv_y + 1 / 16 );
-        my @uv_down_left = ( $uv_x, $uv_y + 1 / 16 );
-
-        push @vertices,    #
-          @vertex_up_left,    @uv_up_left,      #
-          @vertex_down_left,  @uv_down_left,
-          @vertex_up_right,   @uv_up_right,
-          @vertex_down_right, @uv_down_right,
-          @vertex_up_right,   @uv_up_right,
-          @vertex_down_left,  @uv_down_left;
-    }
+    my @vertices = map { $x + $_ * $size_x, $y, ord $chars[$_] } 0 .. $#chars;
 
     my $uniforms = $self->uniforms->{text};
 
@@ -682,20 +658,23 @@ sub print_text_2D {
     glBindTexture GL_TEXTURE_2D, $self->textures->{text};
     glUniform1iARB $uniforms->{texture}, 0;
 
+    glUniform2fARB $uniforms->{size}, 2 * $size_x, 2 * $size;
     glUniform4fARB $uniforms->{color}, @{$color};
 
     my $attribs = $self->attribs->{text};
 
     glEnableVertexAttribArrayARB $attribs->{vertex};
+
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_vertices};
     my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
     glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
-    glVertexAttribPointerARB_c $attribs->{vertex}, 4, GL_FLOAT, GL_FALSE, 0, 0;
+
+    glVertexAttribPointerARB_c $attribs->{vertex}, 3, GL_FLOAT, GL_FALSE, 0, 0;
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
-    glDrawArrays GL_TRIANGLES, 0, scalar( @vertices ) / 2;
+    glDrawArrays GL_POINTS, 0, scalar @chars;
 
     glDisable GL_BLEND;
 
