@@ -222,8 +222,8 @@ sub simple_ai_step {
     return if !$player;
 
     my @vec_to_player = ( $computer->{x} - $player->{x}, $computer->{y} - $player->{y} );
-    my $dot_product   = $vec_to_player[0] * 0 + $vec_to_player[1] * -1;
-    my $perpDot       = $vec_to_player[0] * -1 - $vec_to_player[1] * 0;
+    my $dot_product   = $vec_to_player[1] * -1; # 2d dot products cut down as much as possible
+    my $perpDot       = $vec_to_player[0] * -1;
     my $angle_to_down = rad2deg atan2( $perpDot, $dot_product );
     my $comp_rot      = $computer->{rot};
     $comp_rot -= 360 if $comp_rot > 180;
