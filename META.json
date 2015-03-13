@@ -45,7 +45,7 @@
       "runtime" : {
          "requires" : {
             "Acme::MITHALDU::BleedingOpenGL" : "0",
-            "Acme::MITHALDU::XSGrabBag" : "0",
+            "Acme::MITHALDU::XSGrabBag" : "1.150720",
             "Alien::SDL" : "1.446",
             "Carp" : "0",
             "Carp::Always" : "0",
@@ -57,7 +57,6 @@
             "IO::Async::Resolver" : "0",
             "IO::Async::Timer::Periodic" : "0",
             "List::Util" : "0",
-            "Math::Trig" : "0",
             "Math::Vec" : "0",
             "Moo" : "0",
             "Moo::Role" : "0",

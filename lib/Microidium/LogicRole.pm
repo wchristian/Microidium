@@ -5,8 +5,7 @@ use strictures;
 # VERSION
 
 use List::Util qw( first min max );
-use Math::Trig qw' rad2deg ';
-use Acme::MITHALDU::XSGrabBag 'deg2rad';
+use Acme::MITHALDU::XSGrabBag 1.150720 qw' deg2rad rad2deg ';
 use Math::Vec ();
 use Time::HiRes 'time';
 

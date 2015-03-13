@@ -1,5 +1,5 @@
 requires "Acme::MITHALDU::BleedingOpenGL" => "0";
-requires "Acme::MITHALDU::XSGrabBag" => "0";
+requires "Acme::MITHALDU::XSGrabBag" => "1.150720";
 requires "Alien::SDL" => "1.446";
 requires "Carp" => "0";
 requires "Carp::Always" => "0";
@@ -11,7 +11,6 @@ requires "IO::Async::Loop" => "0";
 requires "IO::Async::Resolver" => "0";
 requires "IO::Async::Timer::Periodic" => "0";
 requires "List::Util" => "0";
-requires "Math::Trig" => "0";
 requires "Math::Vec" => "0";
 requires "Moo" => "0";
 requires "Moo::Role" => "0";
