@@ -73,10 +73,10 @@ float draw_time_block( float x, float top0, vec4 timeblock ) {
 }
 
 void main() {
-    float x_start = 1.0 - ( 5.0 + timings_max_frames ) * pixel_width;
+    float x_start = 1.0 - ( 5.0 + timings_max_frames ) * pixel_width * 2;
     float real_index = timings_max_frames - (pointer - gs_in[0].index);
     if ( real_index > timings_max_frames ) real_index -= timings_max_frames;
-    float x = x_start + pixel_width * real_index;
+    float x = x_start + pixel_width * 2 * real_index;
 
     float top1 = draw_time_block( x, 0, gs_in[0].times1 );
     float top2 = draw_time_block( x, top1, gs_in[0].times2 );
@@ -96,7 +96,7 @@ void main() {
     gl_Position = vec4( x, sixty, 0.0, 1.0 );
     EmitVertex();
     f_color = vec4( 1.0 );
-    gl_Position = vec4( x, sixty, 0.0, 1.0 );
+    gl_Position = vec4( x - pixel_width, sixty, 0.0, 1.0 );
     EmitVertex();
     gl_Position = vec4( x, sixty + pixel_height, 0.0, 1.0 );
     EmitVertex();
