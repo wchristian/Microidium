@@ -11,6 +11,7 @@ use strictures;
 }
 
 use IO::Async::Loop;
+use Log::Contextual qw( :log :dlog  );
 use PryoNet::FrameWorkMessage::RegisterTCP;
 use PryoNet::FrameWorkMessage::RegisterUDP;
 use IO::Async::Timer::Countdown;
@@ -27,6 +28,8 @@ sub connect {
 
     $self->connect_timeout( $timeout );
     $self->udp_port( $udp_port );
+
+    slog_info "Connecting: $host:$tcp_port" . ( $udp_port ? "/$udp_port" : "" );
 
     $self->id( undef );
 
@@ -118,6 +121,7 @@ sub on_recv_udp {
     my ( $self, $sock, $dgram, $addr ) = @_;
     my $frame = $self->extract_frame( \$dgram );
 
+    slog_debug( ( $self->id || 0 ) . " received UDP: " . ref $frame );
     $_->( $self, $frame ) for @{ $self->listeners->{received} };
 
     return;
@@ -130,6 +134,7 @@ sub on_read {
             if ( $frame->isa( "PryoNet::FrameWorkMessage::RegisterTCP" ) ) {
                 $self->id( $frame->connection_id );
                 $self->tcp_registered( 1 );
+                slog_trace( ( $self->id || 0 ) . " received TCP: RegisterTCP" );
                 if ( $self->udp ) {
                     $self->register_udp;
                 }
@@ -143,15 +148,19 @@ sub on_read {
         if ( $self->udp and !$self->udp_registered ) {
             if ( $frame->isa( "PryoNet::FrameWorkMessage::RegisterUDP" ) ) {
                 $self->udp_registered( 1 );
+                slog_trace( ( $self->id || 0 ) . " received UDP: RegisterUDP" );
                 my $udp_handle = $self->udp->read_handle;
                 my ( $local_port, $remote_host, $remote_port ) =
                   map { $udp_handle->$_ } qw( sockport peerhost peerport);
+                slog_debug "Port $local_port localport/UDP connected to: $remote_host:$remote_port";
                 $self->connected( 1 );
                 $_->() for @{ $self->listeners->{connected} };
             }
             next;
         }
         next if !$self->connected;
+        my $log = $frame->isa( "FrameWorkMessage" ) ? \&slog_trace : \&slog_debug;
+        $log->( ( $self->id || 0 ) . " received TCP: " . ref $frame );
         $_->( $self, $frame ) for @{ $self->listeners->{received} };
     }
     return 0;

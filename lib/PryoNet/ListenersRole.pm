@@ -4,6 +4,8 @@ use strictures;
 
 # VERSION
 
+use Log::Contextual qw( :log :dlog  );
+
 use Moo::Role;
 
 has listeners => ( is => 'ro', default => sub { { received => [] } } );

@@ -68,11 +68,25 @@ Font texture made with http://www.codehead.co.uk/cbfg/
 
 =cut
 
+use Log::Contextual qw( :log :dlog with_logger );
+use Log::Contextual::SimpleLogger;
+
 use Moo;
 
 with "Microidium::LogicRole";
 with "Microidium::ClientRole";
 with "Microidium::SDLRole";
 with "Microidium::ClientCameraRole";
+
+around run => sub {
+    my ( $orig, $self, @args ) = @_;
+    my $minilogger = Log::Contextual::SimpleLogger->new( { levels_upto => 'trace' } );
+    with_logger $minilogger => sub {
+        log_info { 'client started' };
+        $orig->( $self, @args );
+        log_info { 'client stopped' };
+    };
+    return;
+};
 
 1;

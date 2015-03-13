@@ -14,6 +14,7 @@ use PryoNet::Client;
 use Acme::MITHALDU::XSGrabBag 'mix';
 use Time::HiRes 'time';
 use POSIX 'floor';
+use Log::Contextual qw( :log );
 
 use Moo::Role;
 
@@ -173,7 +174,7 @@ sub render_world {
 
     if ( !$self->music_is_playing ) {
         my $music = SDL::Mixer::Music::load_MUS( dfile 'vecinec22.ogg' );
-        SDL::Mixer::Music::volume_music( 30 );
+        SDL::Mixer::Music::volume_music( 0 );
         die "music playback error" if SDL::Mixer::Music::play_music( $music, -1 ) == -1;
         $self->music_is_playing( 1 );
     }

@@ -8,11 +8,24 @@ use PryoNet::Server;
 use IO::Async::Timer::Periodic;
 use Time::HiRes 'time';
 use Clone 'clone';
+use Log::Contextual qw( :log with_logger );
+use Log::Contextual::SimpleLogger;
 
 use Moo::Role;
 
 has game_state => ( is => 'rw',   builder => 1 );
 has pryo       => ( is => 'lazy', builder => 1 );
+
+around run => sub {
+    my ( $orig, $self, @args ) = @_;
+    my $minilogger = Log::Contextual::SimpleLogger->new( { levels_upto => 'trace' } );
+    with_logger $minilogger => sub {
+        log_info { 'server started' };
+        $orig->( $self, @args );
+        log_info { 'server stopped' };
+    };
+    return;
+};
 
 sub _build_pryo { PryoNet::Server->new( client => shift ) }
 
