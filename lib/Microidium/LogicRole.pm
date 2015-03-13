@@ -222,7 +222,7 @@ sub simple_ai_step {
     return if !$player;
 
     my @vec_to_player = ( $computer->{x} - $player->{x}, $computer->{y} - $player->{y} );
-    my $dot_product   = Math::Vec->new( @vec_to_player )->Dot( [ 0, -1 ] );
+    my $dot_product   = $vec_to_player[0] * 0 + $vec_to_player[1] * -1;
     my $perpDot       = $vec_to_player[0] * -1 - $vec_to_player[1] * 0;
     my $angle_to_down = rad2deg atan2( $perpDot, $dot_product );
     my $comp_rot      = $computer->{rot};
