@@ -53,10 +53,11 @@ has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
 has fbos             => ( is => 'rw', default => sub { {} } );
 
-has timings_max        => ( is => 'rw', default => sub { 18 } );
-has timings_max_frames => ( is => 'rw', default => sub { 180 } );
-has timings            => ( is => 'lazy' );
-has timestamps         => ( is => 'rw', default => sub { [] } );
+has timings_max         => ( is => 'rw', default => sub { 18 } );
+has timings_max_frames  => ( is => 'rw', default => sub { 180 } );
+has timings             => ( is => 'lazy' );
+has previous_timestamps => ( is => 'rw', default => sub { [] } );
+has timestamps          => ( is => 'rw', default => sub { [] } );
 
 sub _build_timings {
     my ( $self ) = @_;
@@ -201,6 +202,20 @@ sub on_show {
 
     $self->sync;
     push $self->timestamps, [ sync_end => time ];
+    $self->finalize_frame_timings;
+
+    return;
+}
+
+sub finalize_frame_timings {
+    my ( $self ) = @_;
+
+    my $pointer = $self->timings->{pointer};
+    $pointer++;
+    $self->timings->{pointer} = $pointer >= $self->timings_max_frames ? $pointer - $self->timings_max_frames : $pointer;
+    $self->previous_timestamps( $self->timestamps );
+    $self->timestamps( [ $self->timestamps->[-1] ] );
+
     return;
 }
 
@@ -424,7 +439,7 @@ sub render_timings {
     my ( $self ) = @_;
 
     push $self->timestamps, [ timings_render_start => time ];
-    my @time_stamps  = @{ $self->timestamps };
+    my @time_stamps  = @{ $self->previous_timestamps };
     my %timing_types = timing_types();
     my @current_timings;
     for my $i ( 1 .. $#time_stamps ) {
@@ -493,9 +508,7 @@ sub render_timings {
     glDisableVertexAttribArrayARB $attribs->{index};
     glDisableVertexAttribArrayARB $attribs->{$_} for map "times$_", 1 .. $self->timings_max / 2;
 
-    $pointer++;
-    $self->timings->{pointer} = $pointer >= $self->timings_max_frames ? $pointer - $self->timings_max_frames : $pointer;
-    $self->timestamps( [ $self->timestamps->[-1], [ timings_render_end => time ] ] );
+    push $self->timestamps, [ timings_render_end => time ];
 
     return;
 }
