@@ -62,6 +62,9 @@ and L<I Shot You First!|http://www.gdcvault.com/play/1014345/I-Shot-You-First-Ne
 
 Charon for his delightful music track "vecinec22".
 
+L<wrl (william light)|https://github.com/wrl> for talking me through a bunch of
+OpenGL rendering internals.
+
 =head1 RESOURCES
 
 Sounds made with http://www.bfxr.net/
