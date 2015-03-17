@@ -377,7 +377,7 @@ sub play_sound {
     my ( $self, $sound_id, $flier, $cam, $falloff ) = @_;
 
     my $x_diff = $flier->{x} - $cam->{x};
-    my $distance = ( ( ( $x_diff )**2 ) + ( ( $flier->{y} - $cam->{y} )**2 ) )**0.5;
+    my $distance = sqrt( ( $x_diff )**2 + ( $flier->{y} - $cam->{y} )**2 );
     $distance /= $falloff;
     return if $distance > 255;
 
@@ -423,7 +423,7 @@ sub render_ui {
             [ 0, 30 ],
             sprintf "X: % 8.2f / Y: % 8.2f / R: % 8.2f / Speed: % 8.2f",
             ( map $player_actor->{$_}, qw( x y rot ) ),
-            ( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )**0.5
+            sqrt( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )
         );
     }
     $self->print_text_2D( [ 0, 20 ], sprintf "FPS: %5.1f", 1 / $self->frame_time );

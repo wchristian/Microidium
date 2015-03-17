@@ -5,11 +5,13 @@ use strictures;
 # VERSION
 
 use List::Util qw( first min max );
-use Acme::MITHALDU::XSGrabBag 1.150720 qw' deg2rad rad2deg ';
 use Math::Vec ();
 use Time::HiRes 'time';
 
 use Moo::Role;
+
+use constant DEG2RAD => 0.01745329251994329576923690768489;
+use constant RAD2DEG => 57.295779513082320876798154814092;
 
 has planned_new_actors => ( is => 'rw', default => sub { [] } );
 
@@ -139,6 +141,8 @@ sub plan_player_respawns {
 sub modify_actors {
     my ( $self, $new_game_state ) = @_;
 
+    my $collisions = $self->prepare_collisions;
+
     my $old_game_state = $self->game_state;
     my $old_actors     = $old_game_state->{actors};
     my $new_actors     = $new_game_state->{actors};
@@ -152,9 +156,27 @@ sub modify_actors {
         $self->apply_rotation_forces( @c );
         $self->apply_weapon_effects( @c );
         $self->apply_location_damage( @c );
-        $self->apply_collision_effects( @c );
+        $self->apply_collision_effects( @c, $collisions );
     }
     return;
+}
+
+sub prepare_collisions {
+    my ( $self ) = @_;
+
+    my @actors = values %{ $self->game_state->{actors} };
+    my %collisions;
+
+    while ( my $actor = pop @actors ) {
+        my @collisions = grep 32 > sqrt( ( $actor->{x} - $_->{x} )**2 + ( $actor->{y} - $_->{y} )**2 ), @actors;
+        next if !@collisions;
+        for my $participant ( $actor, @collisions ) {
+            my $id = $participant->{id};
+            push @{ $collisions{$id} }, grep $id != $_->{id}, $actor, @collisions;
+        }
+    }
+
+    return \%collisions;
 }
 
 sub remove_actors {
@@ -222,9 +244,9 @@ sub simple_ai_step {
     return if !$player;
 
     my @vec_to_player = ( $computer->{x} - $player->{x}, $computer->{y} - $player->{y} );
-    my $dot_product   = $vec_to_player[1] * -1; # 2d dot products cut down as much as possible
+    my $dot_product   = $vec_to_player[1] * -1;                      # 2d dot products cut down as much as possible
     my $perpDot       = $vec_to_player[0] * -1;
-    my $angle_to_down = rad2deg atan2( $perpDot, $dot_product );
+    my $angle_to_down = RAD2DEG * atan2( $perpDot, $dot_product );
     my $comp_rot      = $computer->{rot};
     $comp_rot -= 360 if $comp_rot > 180;
     my $angle_to_player = $comp_rot - $angle_to_down;
@@ -263,7 +285,7 @@ sub apply_translation_forces {
     $y_speed_delta += $gravity;
 
     if ( $new_player->{is_thrusting} ) {
-        my $rad_rot      = deg2rad $old_player->{rot};
+        my $rad_rot      = DEG2RAD * $old_player->{rot};
         my $thrust_power = $old_player->{thrust_power};
         $thrust_power = $old_player->{thrust_stall} if $stalled;
         $x_speed_delta += $thrust_power * sin $rad_rot;
@@ -274,7 +296,7 @@ sub apply_translation_forces {
     $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
 
     my $max_speed = $old_player->{max_speed};
-    my $player_speed = $new_player->{speed} = ( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 )**0.5;
+    my $player_speed = $new_player->{speed} = sqrt( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 );
     if ( $player_speed > $max_speed ) {
         my $mult = $max_speed / $player_speed;
         $new_player->{x_speed} *= $mult;
@@ -354,16 +376,11 @@ sub apply_location_damage {
 }
 
 sub apply_collision_effects {
-    my ( $self, $actor, $new_actor, $new_game_state ) = @_;
-    for my $other ( $self->collisions( $actor, $self->game_state->{actors} ) ) {
+    my ( $self, $actor, $new_actor, $new_game_state, $collisions ) = @_;
+    for my $other ( @{ $collisions->{ $actor->{id} } || [] } ) {
         $new_actor->{hp} -= 1 if $other->{team} != $actor->{team};
     }
     return;
-}
-
-sub collisions {
-    my ( $self, $actor, $actors ) = @_;
-    return grep { 32 > sqrt( ( $actor->{x} - $_->{x} )**2 + ( $actor->{y} - $_->{y} )**2 ) } values %{$actors};
 }
 
 sub perma_thrust { { thrust => 1 } }

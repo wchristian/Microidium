@@ -21,7 +21,6 @@ use Clone 'clone';
 use Acme::MITHALDU::BleedingOpenGL ':functions';
 use IO::All -binary;
 use OpenGL::Image;
-use Acme::MITHALDU::XSGrabBag 'deg2rad';
 use Carp 'confess';
 use List::Util 'min';
 use Color::Mix;

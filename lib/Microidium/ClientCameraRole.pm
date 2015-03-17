@@ -3,9 +3,10 @@ package Microidium::ClientCameraRole;
 use strictures;
 
 use constant THRUSTS => qw( is_thrusting is_turning_left is_turning_right );
-use Acme::MITHALDU::XSGrabBag 'deg2rad';
 
 use Moo::Role;
+
+use constant DEG2RAD => 0.01745329251994329576923690768489;
 
 has $_ => ( is => 'ro', builder => 1 ) for qw( spring cam_effect_accums );
 
@@ -44,8 +45,8 @@ sub update_camera {
         $dist -= 300 if $cam_effects{is_turning_left} or $cam_effects{is_turning_right};
         $dist = 0 if $dist < 0;
         $dist *= $player_actor->{speed} / $player_actor->{max_speed};
-        my $cam_x_target = $player_actor->{x} + ( $dist * sin deg2rad $player_actor->{rot} );
-        my $cam_y_target = $player_actor->{y} + ( $dist * cos deg2rad $player_actor->{rot} );
+        my $cam_x_target = $player_actor->{x} + ( $dist * sin( DEG2RAD * $player_actor->{rot} ) );
+        my $cam_y_target = $player_actor->{y} + ( $dist * cos( DEG2RAD * $player_actor->{rot} ) );
 
         $cam_y_target = $self->game_state->{floor}   if $cam_y_target < $self->game_state->{floor};
         $cam_y_target = $self->game_state->{ceiling} if $cam_y_target > $self->game_state->{ceiling};
@@ -60,7 +61,7 @@ sub update_camera {
             next if $event->{type} ne "flier_died";
             next if $event->{is_bullet};
             my $max_dist = 400;
-            my $dist = ( ( $event->{x} - $player_actor->{x} )**2 + ( $event->{y} - $player_actor->{y} )**2 )**0.5;
+            my $dist = sqrt( ( $event->{x} - $player_actor->{x} )**2 + ( $event->{y} - $player_actor->{y} )**2 );
             next if $dist > $max_dist;
             my $max_force = 40;    # https://www.desmos.com/calculator/ygopptotiu
             my $force = 1 + ( $max_force - 1 ) * ( ( 4 / ( 3 * ( $dist / $max_dist + 1 )**2 ) ) - 1 / 3 );
