@@ -6,7 +6,6 @@ use strictures;
 
 use List::Util qw( first min max );
 use Math::Vec ();
-use Time::HiRes 'time';
 
 use Moo::Role;
 
@@ -90,7 +89,7 @@ sub plan_bot_respawns {
         is_turning_left  => 0,
         is_turning_right => 0,
         is_firing        => 0,
-        reaction_time    => rand 0.1,
+        reaction_ticks   => rand 6,
     );
     $self->plan_actor_addition( $new_game_state, \%stats );
 
@@ -130,7 +129,7 @@ sub plan_player_respawns {
             is_turning_left  => 0,
             is_turning_right => 0,
             is_firing        => 0,
-            reaction_time    => 0.04,
+            reaction_ticks   => 3,
         );
         $new_game_state->{players}{ $player->{id} }{actor} = $self->plan_actor_addition( $new_game_state, \%actor );
     }
@@ -147,8 +146,8 @@ sub modify_actors {
     my $old_actors     = $old_game_state->{actors};
     my $new_actors     = $new_game_state->{actors};
 
-    $self->apply_inputs( $old_actors, $new_actors );
     my @c = ( $old_actors, $new_actors, $new_game_state );
+    $self->apply_inputs( @c );
     $self->apply_translation_forces( @c );
     $self->apply_rotation_forces( @c );
     $self->apply_weapon_effects( @c );
@@ -208,8 +207,10 @@ sub new_actor_id {
 }
 
 sub computer_ai {
-    my ( $self, $actor ) = @_;
-    return if $actor->{last_decision_time} and time < $actor->{last_decision_time} + .04;
+    my ( $self, $actor, $new_game_state ) = @_;
+    return
+      if $actor->{last_decision_tick}
+      and $new_game_state->{tick} < $actor->{last_decision_tick} + $actor->{reaction_ticks};
 
     my $actors = $self->game_state->{actors};
     delete $actor->{enemy}
@@ -219,7 +220,7 @@ sub computer_ai {
     $actor->{enemy} ||= $self->find_enemy( $actor );
 
     my $decision = $self->simple_ai_step( $actor, $actor->{enemy} );
-    $decision->{last_decision_time} = time;
+    $decision->{last_decision_tick} = $new_game_state->{tick};
     return $decision;
 }
 
@@ -259,18 +260,18 @@ sub simple_ai_step {
 }
 
 sub apply_inputs {
-    my ( $self, $old_actors, $new_actors ) = @_;
+    my ( $self, $old_actors, $new_actors, $new_game_state ) = @_;
     for my $id ( keys %{$old_actors} ) {
         my $actor      = $old_actors->{$id};
         my $input_meth = $actor->{input};
-        my $input      = $self->$input_meth( $actor );
+        my $input      = $self->$input_meth( $actor, $new_game_state );
         next if !$input;
         my $new_actor = $new_actors->{$id};
         $new_actor->{is_thrusting}       = $input->{thrust};
         $new_actor->{is_turning_left}    = $input->{turn_left};
         $new_actor->{is_turning_right}   = $input->{turn_right};
         $new_actor->{is_firing}          = $input->{fire};
-        $new_actor->{last_decision_time} = $input->{last_decision_time} if $input->{last_decision_time};
+        $new_actor->{last_decision_tick} = $input->{last_decision_tick} if $input->{last_decision_tick};
     }
     return;
 }
