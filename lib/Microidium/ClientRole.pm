@@ -357,6 +357,7 @@ sub render_world {
 
             push $self->timestamps, [ sprite_prepare_end => time ];
             $self->send_sprite_datas( @sprites );
+            push $self->timestamps, [ sprite_send_end => time ];
         }
     );
     push $self->timestamps, [ sprite_render_end => time ];

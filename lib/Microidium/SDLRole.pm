@@ -425,7 +425,8 @@ sub timing_types() {
       event_end__move_start
       frame_start__sprite_prepare_end
       integrate_end__sprite_prepare_end
-      sprite_prepare_end__sprite_render_end
+      sprite_prepare_end__sprite_send_end
+      sprite_send_end__sprite_render_end
       sprite_render_end__world_render_end
       world_render_end__postprocess_render_end
       postprocess_render_end__screen_render_end
