@@ -1,7 +1,7 @@
 #version 330
 
 layout(points) in;
-layout(line_strip, max_vertices = 80) out;
+layout(line_strip, max_vertices = 120) out;
 
 in VS_OUT {
     float index;
@@ -77,6 +77,27 @@ float draw_time_block( float x, float top0, vec4 timeblock ) {
     return top2;
 }
 
+float draw_dot_at( float x, float prev, float height, float brightness ) {
+
+    // move to target
+    f_color = vec4( 0.0 );
+    gl_Position = vec4( x, prev, 0.0, 1.0 );
+    EmitVertex();
+    float target = height_for( height );
+    gl_Position = vec4( x, target, 0.0, 1.0 );
+    EmitVertex();
+
+    // draw dot
+    f_color = vec4( brightness );
+    gl_Position = vec4( x - pixel_width, target, 0.0, 1.0 );
+    EmitVertex();
+    float last = target + pixel_height;
+    gl_Position = vec4( x, last, 0.0, 1.0 );
+    EmitVertex();
+
+    return last;
+}
+
 void main() {
     float x_start = 1.0 - ( 5.0 + timings_max_frames ) * pixel_width * 2;
     float real_index = timings_max_frames - (pointer - gs_in[0].index);
@@ -93,19 +114,23 @@ void main() {
     float top8 = draw_time_block( x, top7, gs_in[0].times8 );
     float top9 = draw_time_block( x, top8, gs_in[0].times9 );
 
-    // mark the upper 60 fps barrier
-    f_color = vec4( 0.0 );
-    gl_Position = vec4( x, top9, 0.0, 1.0 );
-    EmitVertex();
-    float sixty = height_for(1.0/60.0);
-    gl_Position = vec4( x, sixty, 0.0, 1.0 );
-    EmitVertex();
-    f_color = vec4( 1.0 );
-    gl_Position = vec4( x - pixel_width, sixty, 0.0, 1.0 );
-    EmitVertex();
-    gl_Position = vec4( x, sixty + pixel_height, 0.0, 1.0 );
-    EmitVertex();
+    float top11 = draw_dot_at( x,  top9, 0.001, 0.07 );
+    float top12 = draw_dot_at( x, top11, 0.002, 0.07 );
+    float top13 = draw_dot_at( x, top12, 0.003, 0.07 );
+    float top14 = draw_dot_at( x, top13, 0.004, 0.07 );
+    float top15 = draw_dot_at( x, top14, 0.005, 0.8 );
+    float top16 = draw_dot_at( x, top15, 0.006, 0.07 );
+    float top17 = draw_dot_at( x, top16, 0.007, 0.07 );
+    float top18 = draw_dot_at( x, top17, 0.008, 0.07 );
+    float top19 = draw_dot_at( x, top18, 0.009, 0.07 );
+    float top20 = draw_dot_at( x, top19, 0.010, 0.8 );
+    float top21 = draw_dot_at( x, top20, 0.011, 0.07 );
+    float top22 = draw_dot_at( x, top21, 0.012, 0.07 );
+    float top23 = draw_dot_at( x, top22, 0.013, 0.07 );
+    float top24 = draw_dot_at( x, top23, 0.014, 0.07 );
+    float top25 = draw_dot_at( x, top24, 0.015, 0.8 );
+    float top26 = draw_dot_at( x, top25, 0.016, 0.07 );
+    draw_dot_at( x, top26, 1.0 / 60.0, 1.0 );
 
     EndPrimitive();
 }
-
