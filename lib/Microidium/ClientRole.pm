@@ -198,11 +198,15 @@ sub render_world {
             my $screen_left   = $cam->{x} - $w;
             my $screen_top    = $cam->{y} + $h;
             my $screen_right  = $cam->{x} + $w;
-            $self->send_sprite_data( [ 0,             0 ],              [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
-            $self->send_sprite_data( [ $screen_left,  $screen_bottom ], [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
-            $self->send_sprite_data( [ $screen_left,  $screen_top ],    [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
-            $self->send_sprite_data( [ $screen_right, $screen_bottom ], [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
-            $self->send_sprite_data( [ $screen_right, $screen_top ],    [ 1, 1, 1, 999999 ], 0, 0.2, "bullet", );
+
+            my @markers = ( [ 1, 1, 1, 999999 ], 0, 0.2, "bullet" );
+            my @sprites = (
+                [ [ 0, 0, 0 ], @markers ],
+                [ [ $screen_left,  $screen_bottom, 0 ], @markers ],
+                [ [ $screen_left,  $screen_top,    0 ], @markers ],
+                [ [ $screen_right, $screen_bottom, 0 ], @markers ],
+                [ [ $screen_right, $screen_top,    0 ], @markers ],
+            );
 
             my $screen_bg_mult = 2.9;    # this relates to $max_bg_depth and fov, but i'm not sure how
             my $screen_bottom_bg = $cam->{y} - $h * $screen_bg_mult;
@@ -235,7 +239,6 @@ sub render_world {
                 $right_end += $tile_size;
             }
 
-            my @sprites;
             for my $y_tile ( ( $bottom_start / $tile_size ) .. ( $top_end / $tile_size ) ) {
                 my $j = $y_tile * $tile_size;
                 for my $x_tile ( ( $left_start / $tile_size ) .. ( $right_end / $tile_size ) ) {
