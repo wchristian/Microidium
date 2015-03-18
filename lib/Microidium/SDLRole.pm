@@ -580,14 +580,14 @@ sub with_sprite_setup_render {
     glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
     glVertexAttribPointerARB_c $attribs->{r_scale},  1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 + 1 ) * 4;
 
+    my $sprites = $self->sprites;
     for my $tex ( @{ $self->sprite_tex_order } ) {
         glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
         glUniform1iARB $uniforms->{texture}, 0;
-        my @vertices = map { @{$_} } @{ $self->sprites->{$tex} };
-        my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @vertices );
+        my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, map @{$_}, @{ $sprites->{$tex} } );
         glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
 
-        my $count = @vertices / $value_count;
+        my $count = @{ $sprites->{$tex} };
         glDrawArrays GL_POINTS, 0, $count;
         $self->sprite_count( $self->sprite_count + $count );
     }
@@ -611,13 +611,14 @@ sub send_sprite_data {
 
 sub send_sprite_datas {
     my ( $self, @datas ) = @_;
+    my $sprites = $self->sprites;
     for my $sprite ( @datas ) {
         my ( $location, $color, $rotation, $scale, $texture, $r_scale ) = @{$sprite};
         $location->[2] //= 0;
         $color ||= [ 1, 1, 1, 1 ];
         $scale   //= 1;
         $r_scale //= 0;
-        push @{ $self->sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale, $r_scale ];
+        push @{ $sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale, $r_scale ];
     }
     return;
 }
