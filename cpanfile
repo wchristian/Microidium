@@ -1,5 +1,5 @@
 requires "Acme::MITHALDU::BleedingOpenGL" => "0";
-requires "Acme::MITHALDU::XSGrabBag" => "1.150720";
+requires "Acme::MITHALDU::XSGrabBag" => "0";
 requires "Alien::SDL" => "1.446";
 requires "Carp" => "0";
 requires "Carp::Always" => "0";

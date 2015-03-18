@@ -1,4 +1,8 @@
+package generate_colors;
+
 use strictures;
+
+# VERSION
 
 # http://phrogz.net/css/distinct-colors.html
 my $in =

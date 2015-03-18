@@ -5,7 +5,7 @@ package Microidium;
 
 =head1 DESCRIPTION
 
-=for HTML <p><a href="http://www.youtube.com/watch?v=KoLMoc5RvQ4"><img src="http://img.youtube.com/vi/KoLMoc5RvQ4/0.jpg" /></a></p>
+=for HTML <p><a href="https://www.youtube.com/watch?v=DWbOnrrJGNI"><img src="http://img.youtube.com/vi/DWbOnrrJGNI/0.jpg" /></a></p>
 
 This has a number of dependencies that should all be available from CPAN. Run
 C<perl Makefile.PL> to get a list of dependencies that you still need to

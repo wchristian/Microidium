@@ -22,6 +22,7 @@ my %WriteMakefileArgs = (
   },
   "DISTNAME" => "Microidium",
   "EXE_FILES" => [
+    "bin/generate_colors",
     "bin/microidium",
     "bin/microidium_server"
   ],
@@ -30,7 +31,7 @@ my %WriteMakefileArgs = (
   "NAME" => "Microidium",
   "PREREQ_PM" => {
     "Acme::MITHALDU::BleedingOpenGL" => 0,
-    "Acme::MITHALDU::XSGrabBag" => "1.150720",
+    "Acme::MITHALDU::XSGrabBag" => 0,
     "Alien::SDL" => "1.446",
     "Carp" => 0,
     "Carp::Always" => 0,
@@ -89,7 +90,7 @@ my %WriteMakefileArgs = (
 
 my %FallbackPrereqs = (
   "Acme::MITHALDU::BleedingOpenGL" => 0,
-  "Acme::MITHALDU::XSGrabBag" => "1.150720",
+  "Acme::MITHALDU::XSGrabBag" => 0,
   "Alien::SDL" => "1.446",
   "Carp" => 0,
   "Carp::Always" => 0,
