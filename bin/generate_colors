@@ -1,0 +1,24 @@
+use strictures;
+
+# http://phrogz.net/css/distinct-colors.html
+my $in =
+"#ff0000, #b0ff70, #a600ff, #ff3838, #00ff95, #cd70ff, #ff7070, #70ffc3, #ff00d4, #ff8400, #00e6ff, #ff70e7, #ffba70, #0062ff, #ff0051, #f6ff00, #3884ff, #ff3877, #faff70, #70a7ff, #ff709d, #73ff00, #2200ff";
+my $alpha = "0.85";
+
+my @values = split /, /, $in;
+s/^#// for @values;
+$_ = [ map hex( $_ ) / 255, /(..)(..)(..)/ ] for @values;
+for my $set ( @values ) {
+    s/^(1|0)$/$1.0/ for @{$set};
+}
+
+my @shader_lines = map "vec4( $_ )", map join( ", ", @{$_}, $alpha ), @values;
+print join ",\n", @shader_lines;
+
+print "\n";
+print "\n";
+
+my @perl_lines = map "        [ $_ ],\n", map join( ", ", @{$_}, $alpha ), @values;
+print join "", @perl_lines;
+
+exit;

@@ -57,6 +57,7 @@ has timings_max_frames  => ( is => 'rw', default => sub { 180 } );
 has timings             => ( is => 'lazy' );
 has previous_timestamps => ( is => 'rw', default => sub { [] } );
 has timestamps          => ( is => 'rw', default => sub { [] } );
+has used_timing_types   => ( is => 'rw', default => sub { {} } );
 
 sub _build_timings {
     my ( $self ) = @_;
@@ -412,23 +413,26 @@ sub init_timings {
 
 sub timing_types() {
     my @types = qw(
-      timings_render_start__timings_render_end
-      timings_render_end__sync_end
       sync_end__event_start
       sync_end__move_start
-      event_start__event_end
-      event_end__event_start
-      event_end__move_start
+      event_end__frame_start
       move_start__move_end
       move_end__move_start
       move_end__frame_start
+      frame_start__integrate_end
+      event_start__event_end
+      event_end__event_start
+      event_end__move_start
       frame_start__sprite_prepare_end
+      integrate_end__sprite_prepare_end
       sprite_prepare_end__sprite_render_end
       sprite_render_end__world_render_end
       world_render_end__postprocess_render_end
       postprocess_render_end__screen_render_end
       screen_render_end__ui_render_end
       ui_render_end__timings_render_start
+      timings_render_start__timings_render_end
+      timings_render_end__sync_end
     );
     my %types = map { $types[$_] => $_ } 0 .. $#types;
     return %types;
@@ -448,6 +452,7 @@ sub render_timings {
             my $type_name = "$start->[0]__$end->[0]";
             my $type      = $timing_types{$type_name} // die "unknown type_name: $type_name";
             my $elapsed   = $end->[1] - $start->[1];
+            $self->used_timing_types->{$type_name} = 1 if $elapsed > 0.0001;
             if (
                 @current_timings
                 and (
