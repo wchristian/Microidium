@@ -146,18 +146,15 @@ sub modify_actors {
     my $old_game_state = $self->game_state;
     my $old_actors     = $old_game_state->{actors};
     my $new_actors     = $new_game_state->{actors};
-    for my $id ( keys %{$old_actors} ) {
-        my $actor      = $old_actors->{$id};
-        my $input_meth = $actor->{input};
-        my $input      = $self->$input_meth( $actor );
-        $self->apply_inputs( $new_actors->{$id}, $input ) if $input;
-        my @c = ( $actor, $new_actors->{$id}, $new_game_state );
-        $self->apply_translation_forces( @c );
-        $self->apply_rotation_forces( @c );
-        $self->apply_weapon_effects( @c );
-        $self->apply_location_damage( @c );
-        $self->apply_collision_effects( @c, $collisions );
-    }
+
+    $self->apply_inputs( $old_actors, $new_actors );
+    my @c = ( $old_actors, $new_actors, $new_game_state );
+    $self->apply_translation_forces( @c );
+    $self->apply_rotation_forces( @c );
+    $self->apply_weapon_effects( @c );
+    $self->apply_location_damage( @c );
+    $self->apply_collision_effects( @c, $collisions );
+
     return;
 }
 
@@ -262,97 +259,121 @@ sub simple_ai_step {
 }
 
 sub apply_inputs {
-    my ( $self, $new_player, $client_state ) = @_;
-    $new_player->{is_thrusting}       = $client_state->{thrust};
-    $new_player->{is_turning_left}    = $client_state->{turn_left};
-    $new_player->{is_turning_right}   = $client_state->{turn_right};
-    $new_player->{is_firing}          = $client_state->{fire};
-    $new_player->{last_decision_time} = $client_state->{last_decision_time} if $client_state->{last_decision_time};
+    my ( $self, $old_actors, $new_actors ) = @_;
+    for my $id ( keys %{$old_actors} ) {
+        my $actor      = $old_actors->{$id};
+        my $input_meth = $actor->{input};
+        my $input      = $self->$input_meth( $actor );
+        next if !$input;
+        my $new_actor = $new_actors->{$id};
+        $new_actor->{is_thrusting}       = $input->{thrust};
+        $new_actor->{is_turning_left}    = $input->{turn_left};
+        $new_actor->{is_turning_right}   = $input->{turn_right};
+        $new_actor->{is_firing}          = $input->{fire};
+        $new_actor->{last_decision_time} = $input->{last_decision_time} if $input->{last_decision_time};
+    }
     return;
 }
 
 sub apply_translation_forces {
-    my ( $self, $old_player, $new_player, $new_game_state ) = @_;
+    my ( $self, $old_actors, $new_actors, $new_game_state ) = @_;
 
-    my $x_speed_delta = 0;
-    my $y_speed_delta = 0;
+    for my $id ( keys %{$old_actors} ) {
+        my $old_player = $old_actors->{$id};
+        my $new_player = $new_actors->{$id};
 
-    my $old_game_state = $self->game_state;
-    my $stalled = ( $old_player->{y} < $old_game_state->{floor} or $old_player->{y} > $old_game_state->{ceiling} );
-    my $gravity = $old_game_state->{gravity};
-    $gravity *= $old_player->{grav_cancel} if $new_player->{is_thrusting} and !$stalled;
-    $gravity *= -1 if $old_player->{y} < $old_game_state->{floor};
-    $y_speed_delta += $gravity;
+        my $x_speed_delta = 0;
+        my $y_speed_delta = 0;
 
-    if ( $new_player->{is_thrusting} ) {
-        my $rad_rot      = DEG2RAD * $old_player->{rot};
-        my $thrust_power = $old_player->{thrust_power};
-        $thrust_power = $old_player->{thrust_stall} if $stalled;
-        $x_speed_delta += $thrust_power * sin $rad_rot;
-        $y_speed_delta += $thrust_power * cos $rad_rot;
+        my $old_game_state = $self->game_state;
+        my $stalled = ( $old_player->{y} < $old_game_state->{floor} or $old_player->{y} > $old_game_state->{ceiling} );
+        my $gravity = $old_game_state->{gravity};
+        $gravity *= $old_player->{grav_cancel} if $new_player->{is_thrusting} and !$stalled;
+        $gravity *= -1 if $old_player->{y} < $old_game_state->{floor};
+        $y_speed_delta += $gravity;
+
+        if ( $new_player->{is_thrusting} ) {
+            my $rad_rot      = DEG2RAD * $old_player->{rot};
+            my $thrust_power = $old_player->{thrust_power};
+            $thrust_power = $old_player->{thrust_stall} if $stalled;
+            $x_speed_delta += $thrust_power * sin $rad_rot;
+            $y_speed_delta += $thrust_power * cos $rad_rot;
+        }
+
+        $new_player->{x_speed} = $old_player->{x_speed} + $x_speed_delta;
+        $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
+
+        my $max_speed = $old_player->{max_speed};
+        my $player_speed = $new_player->{speed} = sqrt( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 );
+        if ( $player_speed > $max_speed ) {
+            my $mult = $max_speed / $player_speed;
+            $new_player->{x_speed} *= $mult;
+            $new_player->{y_speed} *= $mult;
+        }
+
+        $new_player->{x} = $old_player->{x} + $new_player->{x_speed};
+        $new_player->{y} = $old_player->{y} + $new_player->{y_speed};
     }
-
-    $new_player->{x_speed} = $old_player->{x_speed} + $x_speed_delta;
-    $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
-
-    my $max_speed = $old_player->{max_speed};
-    my $player_speed = $new_player->{speed} = sqrt( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 );
-    if ( $player_speed > $max_speed ) {
-        my $mult = $max_speed / $player_speed;
-        $new_player->{x_speed} *= $mult;
-        $new_player->{y_speed} *= $mult;
-    }
-
-    $new_player->{x} = $old_player->{x} + $new_player->{x_speed};
-    $new_player->{y} = $old_player->{y} + $new_player->{y_speed};
 
     return;
 }
 
 sub apply_rotation_forces {
-    my ( $self, $old_player, $new_player, $new_game_state ) = @_;
-    return if !$new_player->{is_turning_left} and !$new_player->{is_turning_right};
+    my ( $self, $old_actors, $new_actors, $new_game_state ) = @_;
 
-    my $sign = $new_player->{is_turning_right} ? 1 : -1;
-    my $turn_speed = $old_player->{turn_speed};
-    $turn_speed *= $old_player->{turn_damp} if $new_player->{is_thrusting};
-    $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
-    $new_player->{rot} += 360 if $new_player->{rot} < 0;
-    $new_player->{rot} -= 360 if $new_player->{rot} > 360;
+    for my $id ( keys %{$old_actors} ) {
+        my $new_player = $new_actors->{$id};
+        next if !$new_player->{is_turning_left} and !$new_player->{is_turning_right};
+
+        my $sign       = $new_player->{is_turning_right} ? 1 : -1;
+        my $old_player = $old_actors->{$id};
+        my $turn_speed = $old_player->{turn_speed};
+        $turn_speed *= $old_player->{turn_damp} if $new_player->{is_thrusting};
+        $new_player->{rot} = $old_player->{rot} + $sign * $turn_speed;
+        $new_player->{rot} += 360 if $new_player->{rot} < 0;
+        $new_player->{rot} -= 360 if $new_player->{rot} > 360;
+    }
     return;
 }
 
 sub apply_weapon_effects {
-    my ( $self, $old_player, $new_player, $new_game_state ) = @_;
-    return if $old_player->{is_bullet};
-    $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
-    if ( $new_player->{is_firing} and $old_player->{gun_heat} <= 0 ) {
-        my %bullet = (
-            max_speed     => 20,
-            thrust_power  => 9,
-            thrust_stall  => 9,
-            x_speed       => $new_player->{x_speed},
-            y_speed       => $new_player->{y_speed},
-            x             => $new_player->{x},
-            y             => $new_player->{y},
-            rot           => $new_player->{rot} + ( 7 * rand() ),
-            hp            => 60,
-            hp_loss_speed => {
-                normal => 1,
-                floor  => 12,
-                ceil   => 12,
-            },
-            grav_cancel => 0,
-            team        => $old_player->{team},
-            owner       => $old_player->{id},
-            is_bullet   => 1,
-            input       => "perma_thrust",
-        );
-        $self->plan_actor_addition( $new_game_state, \%bullet );
-        $new_player->{gun_heat} += $old_player->{gun_use_heat};
-        $self->add_event( $new_game_state, "bullet_fired",
-            { x => $bullet{x}, y => $bullet{y}, owner => $old_player->{id}, bullet => \%bullet } );
+    my ( $self, $old_actors, $new_actors, $new_game_state ) = @_;
+
+    for my $id ( keys %{$old_actors} ) {
+        my $old_player = $old_actors->{$id};
+        next if $old_player->{is_bullet};
+
+        my $new_player = $new_actors->{$id};
+        $new_player->{gun_heat} -= $old_player->{gun_cooldown} if $old_player->{gun_heat} > 0;
+        if ( $new_player->{is_firing} and $old_player->{gun_heat} <= 0 ) {
+            my %bullet = (
+                max_speed     => 20,
+                thrust_power  => 9,
+                thrust_stall  => 9,
+                x_speed       => $new_player->{x_speed},
+                y_speed       => $new_player->{y_speed},
+                x             => $new_player->{x},
+                y             => $new_player->{y},
+                rot           => $new_player->{rot} + ( 7 * rand() ),
+                hp            => 60,
+                hp_loss_speed => {
+                    normal => 1,
+                    floor  => 12,
+                    ceil   => 12,
+                },
+                grav_cancel => 0,
+                team        => $old_player->{team},
+                owner       => $old_player->{id},
+                is_bullet   => 1,
+                input       => "perma_thrust",
+            );
+            $self->plan_actor_addition( $new_game_state, \%bullet );
+            $new_player->{gun_heat} += $old_player->{gun_use_heat};
+            $self->add_event( $new_game_state, "bullet_fired",
+                { x => $bullet{x}, y => $bullet{y}, owner => $old_player->{id}, bullet => \%bullet } );
+        }
     }
+
     return;
 }
 
@@ -363,22 +384,31 @@ sub add_event {
 }
 
 sub apply_location_damage {
-    my ( $self, $actor, $new_actor, $new_game_state ) = @_;
-    return if !$actor->{hp_loss_speed};
+    my ( $self, $old_actors, $new_actors, $new_game_state ) = @_;
 
-    my $game_state = $self->game_state;
-    my $loss_key =
-        ( $actor->{y} < $game_state->{floor} )   ? 'floor'
-      : ( $actor->{y} > $game_state->{ceiling} ) ? 'ceil'
-      :                                            'normal';
-    $new_actor->{hp} -= $actor->{hp_loss_speed}{$loss_key};
+    for my $id ( keys %{$old_actors} ) {
+        my $old_player = $old_actors->{$id};
+        next if !$old_player->{hp_loss_speed};
+
+        my $game_state = $self->game_state;
+        my $loss_key =
+            ( $old_player->{y} < $game_state->{floor} )   ? 'floor'
+          : ( $old_player->{y} > $game_state->{ceiling} ) ? 'ceil'
+          :                                                 'normal';
+        $new_actors->{$id}->{hp} -= $old_player->{hp_loss_speed}{$loss_key};
+    }
+
     return;
 }
 
 sub apply_collision_effects {
-    my ( $self, $actor, $new_actor, $new_game_state, $collisions ) = @_;
-    for my $other ( @{ $collisions->{ $actor->{id} } || [] } ) {
-        $new_actor->{hp} -= 1 if $other->{team} != $actor->{team};
+    my ( $self, $old_actors, $new_actors, $new_game_state, $collisions ) = @_;
+
+    for my $id ( keys %{$old_actors} ) {
+        my $old_player = $old_actors->{$id};
+        for my $other ( @{ $collisions->{ $old_player->{id} } || [] } ) {
+            $new_actors->{$id}->{hp} -= 1 if $other->{team} != $old_player->{team};
+        }
     }
     return;
 }
