@@ -58,6 +58,7 @@ has timings             => ( is => 'lazy' );
 has previous_timestamps => ( is => 'rw', default => sub { [] } );
 has timestamps          => ( is => 'rw', default => sub { [] } );
 has used_timing_types   => ( is => 'rw', default => sub { {} } );
+has timing_types        => ( is => 'lazy' );
 
 sub _build_timings {
     my ( $self ) = @_;
@@ -463,7 +464,7 @@ sub init_timings {
     return;
 }
 
-sub timing_types() {
+sub _build_timing_types {
     my @types = qw(
       sync_end__event_start
       sync_end__move_start
@@ -488,7 +489,7 @@ sub timing_types() {
       timings_render_end__sync_end
     );
     my %types = map { $types[$_] => $_ } 0 .. $#types;
-    return %types;
+    return \%types;
 }
 
 sub render_timings {
@@ -496,7 +497,7 @@ sub render_timings {
 
     push $self->timestamps, [ timings_render_start => time ];
     my @time_stamps  = @{ $self->previous_timestamps };
-    my %timing_types = timing_types();
+    my %timing_types = %{ $self->timing_types };
     my @current_timings;
     for my $i ( 1 .. $#time_stamps ) {
         my $end = $time_stamps[$i];

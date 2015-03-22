@@ -444,7 +444,7 @@ sub render_ui {
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
     push @texts, [ [ 0, $self->height - 22 - $_ * 10 ], $to_display[$_] ] for 0 .. $#to_display;
 
-    my %timing_types  = $self->timing_types;
+    my %timing_types  = %{ $self->timing_types };
     my @timing_colors = $self->timing_colors;
     my $y             = 0;
     my $x             = 70 + $self->width / 2;
