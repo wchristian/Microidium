@@ -201,7 +201,7 @@ sub on_show {
     $self->smooth_update( render_time => time - $now );
     $self->render_timings;
 
-    $self->sync;
+    SDL::Video::GL_swap_buffers;
     push $self->timestamps, [ sync_end => time ];
     $self->finalize_frame_timings;
 
