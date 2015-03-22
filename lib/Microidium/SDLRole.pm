@@ -76,7 +76,7 @@ BEGIN {
       GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
       GL_TEXTURE_WRAP_S  GL_TEXTURE_WRAP_T GL_RGBA GL_DEPTH_COMPONENT
       GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
-      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT
+      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW
     );
 
     for my $name ( keys %gl_constants ) {
@@ -504,7 +504,7 @@ sub render_timings {
       for 1 .. $self->timings_max / 2;
 
     my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $self->timings->{list} } );
-    glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
+    glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
 
     glDrawArrays GL_POINTS, 0, $self->timings_max_frames;
 
@@ -585,7 +585,7 @@ sub with_sprite_setup_render {
         glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
         glUniform1iARB $uniforms->{texture}, 0;
         my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, map @{$_}, @{ $sprites->{$tex} } );
-        glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STATIC_DRAW;
+        glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
 
         my $count = @{ $sprites->{$tex} };
         glDrawArrays GL_POINTS, 0, $count;
@@ -693,7 +693,7 @@ sub print_text_2D {
         glUniform4fARB $uniforms->{color}, @{$color};
 
         my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
-        glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
+        glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STREAM_DRAW;
 
         glDrawArrays GL_POINTS, 0, scalar @chars;
     }
@@ -792,7 +792,7 @@ sub load_vertex_buffer {
     my $vbo = $self->new_vbo( $name );
     glBindBufferARB GL_ARRAY_BUFFER, $vbo;
     my $v = OpenGL::Array->new_list( GL_FLOAT, @data );
-    glBufferDataARB_p GL_ARRAY_BUFFER, $v, GL_STATIC_DRAW;
+    glBufferDataARB_p GL_ARRAY_BUFFER, $v, GL_STREAM_DRAW;
     glBindBufferARB GL_ARRAY_BUFFER, 0;
 
     return;
