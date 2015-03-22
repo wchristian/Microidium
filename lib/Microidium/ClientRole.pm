@@ -397,47 +397,52 @@ sub play_sound {
 sub render_ui {
     my ( $self, $game_state ) = @_;
     my $player_actor = $self->local_player_actor;
-    $self->print_text_2D( [ 0, $self->height - 12 ],
-        "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" );
+    my @texts;
+    push @texts,
+      [ [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" ];
 
-    $self->print_text_2D( [ 0, 90 ], "Perl v$]" );
+    push @texts, [ [ 0, 90 ], "Perl v$]" ];
 
-    $self->print_text_2D(
+    push @texts,
+      [
         [ 0, 80 ],
-        sprintf
-          "Viewport: %d x %d = %.2f MPix",
+        sprintf "Viewport: %d x %d = %.2f MPix",
         $self->width, $self->height, $self->width * $self->height / 1_000_000
+      ];
 
-    );
-
-    $self->print_text_2D(
+    push @texts,
+      [
         [ 0, 70 ],
         sprintf "Render: %d x %d = %.2f MPix",
         $self->aspect_ratio * $self->fb_height,
         $self->fb_height, $self->aspect_ratio * $self->fb_height * $self->fb_height / 1_000_000
-    );
+      ];
 
-    $self->print_text_2D( [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count );
+    push @texts, [ [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count ];
 
-    $self->print_text_2D( [ 0, 50 ],
-        sprintf( "Audio channels:|%s|", join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31 ) );
+    push @texts,
+      [
+        [ 0, 50 ],
+        sprintf( "Audio channels:|%s|", join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31 )
+      ];
     if ( $player_actor ) {
-        $self->print_text_2D( [ 0, 40 ], "HP: $player_actor->{hp}" );
-        $self->print_text_2D(
+        push @texts, [ [ 0, 40 ], "HP: $player_actor->{hp}" ];
+        push @texts,
+          [
             [ 0, 30 ],
             sprintf "X: % 8.2f / Y: % 8.2f / R: % 8.2f / Speed: % 8.2f",
             ( map $player_actor->{$_}, qw( x y rot ) ),
             sqrt( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )
-        );
+          ];
     }
-    $self->print_text_2D( [ 0, 20 ], sprintf "FPS: %5.1f", 1 / $self->frame_time );
+    push @texts, [ [ 0, 20 ], sprintf "FPS: %5.1f", 1 / $self->frame_time ];
     my $tick = $game_state->{tick} || 0;
-    $self->print_text_2D( [ 0, 10 ],
-        sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ) );
+    push @texts,
+      [ [ 0, 10 ], sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ) ];
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
-    $self->print_text_2D( [ 0, $self->height - 22 - $_ * 10 ], $to_display[$_] ) for 0 .. $#to_display;
+    push @texts, [ [ 0, $self->height - 22 - $_ * 10 ], $to_display[$_] ] for 0 .. $#to_display;
 
     my %timing_types  = $self->timing_types;
     my @timing_colors = $self->timing_colors;
@@ -446,9 +451,11 @@ sub render_ui {
     my @used          = grep $self->used_timing_types->{$_}, keys %timing_types;
 
     for my $timing ( sort { $timing_types{$a} <=> $timing_types{$b} } @used ) {
-        $self->print_text_2D( [ $x, $y, undef, $timing_colors[ $timing_types{$timing} ] ], $timing );
+        push @texts, [ [ $x, $y, undef, $timing_colors[ $timing_types{$timing} ] ], $timing ];
         $y += 12;
     }
+
+    $self->print_text_2D( @texts );
 
     return;
 }

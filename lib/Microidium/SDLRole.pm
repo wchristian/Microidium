@@ -654,19 +654,7 @@ sub render_screen_target {
 }
 
 sub print_text_2D {
-    my ( $self, $settings, $text ) = @_;
-    my ( $x, $y, $size, $color ) = @{$settings};
-
-    $x          //= 0;
-    $y          //= 0;
-    $size       //= 16;
-    $color      //= [ 1, 1, 1 ];
-    $color->[3] //= 1.0;
-
-    my $size_x = $size / 2;
-    my @chars = split //, $text;
-
-    my @vertices = map { $x + $_ * $size_x, $y, ord $chars[$_] } 0 .. $#chars;
+    my ( $self, @texts ) = @_;
 
     my $uniforms = $self->uniforms->{text};
 
@@ -676,23 +664,39 @@ sub print_text_2D {
     glBindTexture GL_TEXTURE_2D, $self->textures->{text};
     glUniform1iARB $uniforms->{texture}, 0;
 
-    glUniform2fARB $uniforms->{size}, 2 * $size_x, 2 * $size;
-    glUniform4fARB $uniforms->{color}, @{$color};
-
     my $attribs = $self->attribs->{text};
 
     glEnableVertexAttribArrayARB $attribs->{vertex};
 
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_vertices};
-    my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
-    glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
 
     glVertexAttribPointerARB_c $attribs->{vertex}, 3, GL_FLOAT, GL_FALSE, 0, 0;
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
-    glDrawArrays GL_POINTS, 0, scalar @chars;
+    for my $text ( @texts ) {
+        my ( $x, $y, $size, $color ) = @{ $text->[0] };
+
+        $x          //= 0;
+        $y          //= 0;
+        $size       //= 16;
+        $color      //= [ 1, 1, 1 ];
+        $color->[3] //= 1.0;
+
+        my $size_x = $size / 2;
+        my @chars = split //, $text->[1];
+
+        my @vertices = map { $x + $_ * $size_x, $y, ord $chars[$_] } 0 .. $#chars;
+
+        glUniform2fARB $uniforms->{size}, 2 * $size_x, 2 * $size;
+        glUniform4fARB $uniforms->{color}, @{$color};
+
+        my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
+        glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STATIC_DRAW;
+
+        glDrawArrays GL_POINTS, 0, scalar @chars;
+    }
 
     glDisable GL_BLEND;
 
