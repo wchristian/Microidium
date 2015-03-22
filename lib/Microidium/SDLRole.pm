@@ -46,7 +46,7 @@ has $_ => ( is => 'rw', default => sub { 0 } ) for qw( render_time world_time ui
 
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
-has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos );
+has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos vaos );
 has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
@@ -354,6 +354,7 @@ sub init_sprites {
     my ( $self ) = @_;
 
     $self->new_vbo( $_ ) for qw( sprite );
+    $self->new_vao( $_ ) for qw( sprite );
 
     $self->shaders->{sprites} = $self->load_shader_set( map dfile "sprite.$_", qw( vert frag geom ) );
     $self->uniforms->{sprites}{$_} = $self->glGetUniformLocationARB_p_safe( "sprites", $_ )
@@ -371,6 +372,28 @@ sub init_sprites {
         [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1_wings player1 bullet )] );
     $self->textures->{$_} = $self->load_texture( dfile "$_.tga" ) for @{ $self->sprite_tex_order };
 
+    glBindVertexArray $self->vaos->{sprite};
+
+    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{sprite};
+
+    my $attribs = $self->attribs->{sprites};
+
+    glEnableVertexAttribArrayARB $attribs->{color};
+    glEnableVertexAttribArrayARB $attribs->{offset};
+    glEnableVertexAttribArrayARB $attribs->{rotation};
+    glEnableVertexAttribArrayARB $attribs->{scale};
+    glEnableVertexAttribArrayARB $attribs->{r_scale};
+
+    my $value_count = 4 + 3 + 1 + 1 + 1;
+    my $stride      = 4 * $value_count;    # bytes * counts
+    glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
+    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{r_scale},  1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 + 1 ) * 4;
+
+    glBindVertexArray 0;
+
     return;
 }
 
@@ -378,6 +401,7 @@ sub init_text_2D {
     my ( $self, $path ) = @_;
 
     $self->new_vbo( $_ ) for qw( text_vertices );
+    $self->new_vao( $_ ) for qw( text_vertices );
 
     $self->shaders->{text} = $self->load_shader_set( map dfile "text.$_", qw( vert frag geom ) );
     $self->uniforms->{text}{$_} = $self->glGetUniformLocationARB_p_safe( "text", $_ )
@@ -386,8 +410,21 @@ sub init_text_2D {
 
     glUseProgramObjectARB $self->shaders->{text};
     glUniform2fARB $self->uniforms->{text}{screen}, $self->width, $self->height;
+    glUniform1iARB $self->uniforms->{text}{texture}, 0;
 
     $self->textures->{text} = $self->load_texture( $path );
+
+    glBindVertexArray $self->vaos->{text_vertices};
+
+    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_vertices};
+
+    my $attribs = $self->attribs->{text};
+
+    glEnableVertexAttribArrayARB $attribs->{vertex};
+
+    glVertexAttribPointerARB_c $attribs->{vertex}, 3, GL_FLOAT, GL_FALSE, 0, 0;
+
+    glBindVertexArray 0;
 
     return;
 }
@@ -396,6 +433,7 @@ sub init_timings {
     my ( $self ) = @_;
 
     $self->new_vbo( $_ ) for qw( timings );
+    $self->new_vao( $_ ) for qw( timings );
 
     $self->shaders->{timings} = $self->load_shader_set( map dfile "timings.$_", qw( vert frag geom ) );
     $self->uniforms->{timings}{$_} = $self->glGetUniformLocationARB_p_safe( "timings", $_ )
@@ -407,6 +445,20 @@ sub init_timings {
     glUniform1fARB $self->uniforms->{timings}{timings_max_frames}, $self->timings_max_frames;
     glUniform1fARB $self->uniforms->{timings}{pixel_width},        2 / $self->width;
     glUniform1fARB $self->uniforms->{timings}{pixel_height},       2 / $self->height;
+
+    glBindVertexArray $self->vaos->{timings};
+
+    glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{timings};
+
+    my $attribs = $self->attribs->{timings};
+    glEnableVertexAttribArrayARB $attribs->{index};
+    glEnableVertexAttribArrayARB $attribs->{$_} for map "times$_", 1 .. $self->timings_max / 2;
+
+    my $value_count = 1 + ( 4 * $self->timings_max / 2 );
+    my $stride = 4 * $value_count;    # bytes * counts
+    glVertexAttribPointerARB_c $attribs->{index}, 1, GL_FLOAT, GL_FALSE, $stride, 0;
+    glVertexAttribPointerARB_c $attribs->{"times$_"}, 4, GL_FLOAT, GL_FALSE, $stride, ( 1 + ( 4 * ( $_ - 1 ) ) ) * 4
+      for 1 .. $self->timings_max / 2;
 
     return;
 }
@@ -484,24 +536,15 @@ sub render_timings {
       @current_timings;
 
     glUseProgramObjectARB $self->shaders->{timings};
+    glBindVertexArray $self->vaos->{timings};
 
     my $uniforms = $self->uniforms->{timings};
     glUniform1fARB $uniforms->{pointer}, $self->timings->{pointer};
-
-    my $attribs = $self->attribs->{timings};
-    glEnableVertexAttribArrayARB $attribs->{index};
-    glEnableVertexAttribArrayARB $attribs->{$_} for map "times$_", 1 .. $self->timings_max / 2;
 
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{timings};
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
-
-    my $value_count = 1 + ( 4 * $self->timings_max / 2 );
-    my $stride = 4 * $value_count;    # bytes * counts
-    glVertexAttribPointerARB_c $attribs->{index}, 1, GL_FLOAT, GL_FALSE, $stride, 0;
-    glVertexAttribPointerARB_c $attribs->{"times$_"}, 4, GL_FLOAT, GL_FALSE, $stride, ( 1 + ( 4 * ( $_ - 1 ) ) ) * 4
-      for 1 .. $self->timings_max / 2;
 
     my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $self->timings->{list} } );
     glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
@@ -510,8 +553,7 @@ sub render_timings {
 
     glDisable GL_BLEND;
 
-    glDisableVertexAttribArrayARB $attribs->{index};
-    glDisableVertexAttribArrayARB $attribs->{$_} for map "times$_", 1 .. $self->timings_max / 2;
+    glBindVertexArray 0;
 
     push $self->timestamps, [ timings_render_end => time ];
 
@@ -554,31 +596,17 @@ sub with_sprite_setup_render {
     my ( $self ) = @_;
 
     glUseProgramObjectARB $self->shaders->{sprites};
+    glBindVertexArray $self->vaos->{sprite};
 
     my $uniforms = $self->uniforms->{sprites};
     glUniform2fARB $uniforms->{camera}, @{ $self->client_state->{camera} }{qw( x y )};
 
     glActiveTextureARB GL_TEXTURE0;
 
-    my $attribs = $self->attribs->{sprites};
-    glEnableVertexAttribArrayARB $attribs->{color};
-    glEnableVertexAttribArrayARB $attribs->{offset};
-    glEnableVertexAttribArrayARB $attribs->{rotation};
-    glEnableVertexAttribArrayARB $attribs->{scale};
-    glEnableVertexAttribArrayARB $attribs->{r_scale};
-
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{sprite};
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
-
-    my $value_count = 4 + 3 + 1 + 1 + 1;
-    my $stride      = 4 * $value_count;    # bytes * counts
-    glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
-    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{r_scale},  1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 + 1 ) * 4;
 
     my $sprites = $self->sprites;
     for my $tex ( @{ $self->sprite_tex_order } ) {
@@ -594,11 +622,7 @@ sub with_sprite_setup_render {
 
     glDisable GL_BLEND;
 
-    glDisableVertexAttribArrayARB $attribs->{color};
-    glDisableVertexAttribArrayARB $attribs->{offset};
-    glDisableVertexAttribArrayARB $attribs->{rotation};
-    glDisableVertexAttribArrayARB $attribs->{scale};
-    glDisableVertexAttribArrayARB $attribs->{r_scale};
+    glBindVertexArray 0;
 
     return;
 }
@@ -659,18 +683,12 @@ sub print_text_2D {
     my $uniforms = $self->uniforms->{text};
 
     glUseProgramObjectARB $self->shaders->{text};
+    glBindVertexArray $self->vaos->{text_vertices};
 
     glActiveTextureARB GL_TEXTURE0;
     glBindTexture GL_TEXTURE_2D, $self->textures->{text};
-    glUniform1iARB $uniforms->{texture}, 0;
-
-    my $attribs = $self->attribs->{text};
-
-    glEnableVertexAttribArrayARB $attribs->{vertex};
 
     glBindBufferARB GL_ARRAY_BUFFER, $self->vbos->{text_vertices};
-
-    glVertexAttribPointerARB_c $attribs->{vertex}, 3, GL_FLOAT, GL_FALSE, 0, 0;
 
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
@@ -700,7 +718,7 @@ sub print_text_2D {
 
     glDisable GL_BLEND;
 
-    glDisableVertexAttribArrayARB $attribs->{vertex};
+    glBindVertexArray 0;
 
     return;
 }
@@ -785,6 +803,7 @@ sub CreateProgram {
 }
 
 sub new_vbo { shift->vbos->{ shift() } = glGenBuffersARB_p 1 }
+sub new_vao { shift->vaos->{ shift() } = glGenVertexArrays_p 1 }
 
 sub load_vertex_buffer {
     my ( $self, $name, @data ) = @_;
