@@ -181,6 +181,7 @@ sub change_fov {
 sub on_move {
     my ( $self ) = @_;
     push $self->timestamps, [ move_start => time ];
+    $self->finalize_frame_timings;
     my $new_game_state = clone $self->game_state;
     $self->update_game_state( $new_game_state, $self->client_state );
     $self->game_state( $new_game_state );
@@ -203,7 +204,6 @@ sub on_show {
 
     SDL::Video::GL_swap_buffers;
     push $self->timestamps, [ sync_end => time ];
-    $self->finalize_frame_timings;
 
     return;
 }
@@ -466,16 +466,11 @@ sub init_timings {
 
 sub _build_timing_types {
     my @types = qw(
-      sync_end__event_start
-      sync_end__move_start
       event_end__frame_start
       move_start__move_end
       move_end__move_start
       move_end__frame_start
       frame_start__integrate_end
-      event_start__event_end
-      event_end__event_start
-      event_end__move_start
       frame_start__sprite_prepare_end
       integrate_end__sprite_prepare_end
       sprite_prepare_end__sprite_send_end
@@ -487,8 +482,13 @@ sub _build_timing_types {
       ui_render_end__timings_render_start
       timings_render_start__timings_render_end
       timings_render_end__sync_end
+      event_start__event_end
+      event_end__event_start
+      sync_end__event_start
+      sync_end__move_start
     );
     my %types = map { $types[$_] => $_ } 0 .. $#types;
+    $types{event_end__move_start} = $types{sync_end__move_start};
     return \%types;
 }
 
@@ -498,6 +498,7 @@ sub render_timings {
     push $self->timestamps, [ timings_render_start => time ];
     my @time_stamps  = @{ $self->previous_timestamps };
     my %timing_types = %{ $self->timing_types };
+    my $elapse_limit = 0.0001;
     my @current_timings;
     for my $i ( 1 .. $#time_stamps ) {
         my $end = $time_stamps[$i];
@@ -506,7 +507,7 @@ sub render_timings {
             my $type_name = "$start->[0]__$end->[0]";
             my $type      = $timing_types{$type_name} // die "unknown type_name: $type_name";
             my $elapsed   = $end->[1] - $start->[1];
-            $self->used_timing_types->{$type_name} = 1 if $elapsed > 0.0001;
+            $self->used_timing_types->{$type_name} = 1 if $elapsed > $elapse_limit;
             if (
                 @current_timings
                 and (
@@ -519,6 +520,7 @@ sub render_timings {
               )
             {
                 $current_timings[-2] += $elapsed;
+                $self->used_timing_types->{$type_name} = 1 if $current_timings[-2] > $elapse_limit;
             }
             else {
                 push @current_timings, $elapsed, $type;
