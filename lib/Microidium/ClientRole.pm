@@ -30,8 +30,7 @@ has pryo => ( is => 'lazy', builder => 1 );
 has console => ( is => 'ro', default => sub { [ time, qw( a b c ) ] } );
 has last_network_state => ( is => 'rw' );
 around update_game_state => \&client_update_game_state;
-has last_player_hit      => ( is => 'rw', default => sub { 0 } );
-after update_game_state  => \&update_last_player_hit;
+has last_player_hit => ( is => 'rw', default => sub { 0 } );
 has in_network_game   => ( is => 'rw' );
 has local_player_id   => ( is => 'rw' );
 has network_player_id => ( is => 'rw' );
@@ -106,17 +105,6 @@ sub local_update_game_state {
         $self->local_player_id( 1 );
     }
     return $self->$orig( $new_game_state, @args );
-}
-
-sub update_last_player_hit {
-    my ( $self, $new_game_state ) = @_;
-    my $old_game_state = $self->game_state;
-    my $old_player_id  = $old_game_state->{player};
-    return if !$old_player_id;
-    my $old_player = $old_player_id ? $old_game_state->{actors}{$old_player_id} : undef;
-    my $new_player = $new_game_state->{actors}{$old_player_id};
-    $self->last_player_hit( time ) if $old_player and $new_player and $old_player->{hp} > $new_player->{hp};
-    return;
 }
 
 sub player_control {
