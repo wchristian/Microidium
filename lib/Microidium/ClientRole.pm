@@ -157,6 +157,14 @@ sub connect {
     return;
 }
 
+sub update_client_game_state {
+    my ( $self, $game_state ) = @_;
+
+    $self->update_camera( $game_state );
+
+    return;
+}
+
 sub render_world {
     my ( $self, $game_state ) = @_;
 
@@ -166,8 +174,6 @@ sub render_world {
         die "music playback error" if SDL::Mixer::Music::play_music( $music, -1 ) == -1;
         $self->music_is_playing( 1 );
     }
-
-    $self->update_camera( $game_state );
 
     my $cam = $self->client_state->{camera};
 

@@ -225,6 +225,8 @@ sub render {
 
     my $game_state = $self->game_state;
 
+    $self->update_client_game_state( $game_state );
+
     my $now = time;
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{post_process};
     glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
