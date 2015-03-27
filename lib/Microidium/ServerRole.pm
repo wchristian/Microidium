@@ -6,7 +6,6 @@ use strictures;
 
 use PryoNet::Server;
 use IO::Async::Timer::Periodic;
-use Time::HiRes 'time';
 use Clone 'clone';
 
 use Moo::Role;
@@ -49,7 +48,7 @@ sub run {
     my $tick = 0;
 
     my $timer = IO::Async::Timer::Periodic->new(
-        interval => 0.016,
+        interval => 1 / 60,
         on_tick  => sub {
             $tick++;
             my $new_game_state = clone $self->game_state;
