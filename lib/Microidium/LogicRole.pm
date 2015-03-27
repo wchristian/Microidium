@@ -18,7 +18,7 @@ sub _build_game_state {
     my ( $self ) = @_;
     return {
         tick          => 0,
-        last_input    => 0,
+        last_input    => undef,
         players       => {},
         actors        => {},
         last_actor_id => 0,
@@ -196,7 +196,8 @@ sub add_planned_actors {
 
 sub plan_actor_addition {
     my ( $self, $game_state, $actor ) = @_;
-    $actor->{id} = $self->new_actor_id( $game_state );
+    $actor->{id}      = $self->new_actor_id( $game_state );
+    $actor->{created} = $game_state->{tick};
     push @{ $self->planned_new_actors }, $actor;
     return $actor->{id};
 }

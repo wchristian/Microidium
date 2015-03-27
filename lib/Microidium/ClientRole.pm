@@ -110,15 +110,16 @@ sub local_update_game_state {
 
 sub player_control {
     my ( $self, $actor ) = @_;
-    return $self->client_state if time - $self->game_state->{last_input} <= 10;
-    return $self->computer_ai( $actor, $self->game_state );
+    my $state = $self->game_state;
+    return $self->client_state if defined $state->{last_input} and $state->{tick} - $state->{last_input} <= 600;
+    return $self->computer_ai( $actor, $state );
 }
 
 sub on_quit { shift->stop }
 
 sub on_keydown {
     my ( $self, $event ) = @_;
-    $self->game_state->{last_input} = time;
+    $self->game_state->{last_input} = $self->game_state->{tick};
     my $sym = $event->key_sym;
     $self->stop if $sym == SDLK_q;
     $self->client_state->{thrust}     = 1 if $sym == SDLK_UP;
@@ -249,18 +250,12 @@ sub render_world {
 
             @sprites = sort { $b->[0][2] <=> $a->[0][2] } @sprites;
 
-            $actors{ $_->{bullet}{id} }{blink_until} = time + 0.067
-              for grep { $_->{type} eq "bullet_fired" } @{ $game_state->{events} };
-
             my $max_trail = 45;
 
             for my $flier ( values %actors ) {
                 my @color = @{
-                    $flier->{is_bullet} ? (
-                        ( $flier->{blink_until} and $flier->{blink_until} >= time )    #
-                        ? [ 0, 0, 0, 1 ]
-                        : $c->{ $flier->{team} }
-                      )
+                    $flier->{is_bullet}
+                    ? ( ( $flier->{created} + 4 >= $game_state->{tick} ) ? [ 0, 0, 0, 1 ] : $c->{ $flier->{team} } )
                     : $c->{ $flier->{team} }
                 };
                 if (   $flier->{y} < $self->game_state->{floor}
