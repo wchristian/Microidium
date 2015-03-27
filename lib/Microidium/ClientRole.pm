@@ -37,6 +37,7 @@ has network_player_id => ( is => 'rw' );
 has team_colors =>
   ( is => 'ro', default => sub { { 1 => [ .9, .9, .9, 1 ], 2 => [ .9, .7, .2, 1 ], 3 => [ .2, .8, 1, 1 ] } } );
 has music_is_playing => ( is => 'rw' );
+has tile_cache => ( is => 'ro', default => sub { {} } );
 
 my %trails;
 my @explosions;
@@ -227,22 +228,16 @@ sub render_world {
                 $right_end += $tile_size;
             }
 
+            my $tile_cache = $self->tile_cache;
+
             for my $y_tile ( ( $bottom_start / $tile_size ) .. ( $top_end / $tile_size ) ) {
-                my $j = $y_tile * $tile_size;
                 for my $x_tile ( ( $left_start / $tile_size ) .. ( $right_end / $tile_size ) ) {
-                    my $i = $x_tile * $tile_size;
-                    my $hash = mix( $STAR_SEED, $i, $j );
-                    for ( 1 .. 1 ) {
-                        my $px = $i + ( $hash % $tile_size );
-                        $hash >>= 3;
-                        my $py = $j + ( $hash % $tile_size );
-                        $hash >>= 3;
-                        my $pz = "0.$hash" * $max_bg_depth;
-                        $hash >>= 3;
-                        my $color =
-                          $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
-                        push @sprites, [ [ $px, $py, $pz ], $color, 0, $sprite_mult, "blob" ];
-                    }
+                    push @sprites,
+                      @{
+                        $tile_cache->{"$y_tile:$x_tile"} ||=
+                          $self->generate_background_tile( $y_tile, $x_tile, $tile_size, $STAR_SEED, $max_bg_depth,
+                            $game_state, $c, $sprite_mult )
+                      };
                 }
             }
 
@@ -363,6 +358,29 @@ sub render_world {
     $self->play_sound( "death", $_, $audio_pickup, 3 ) for @dead_planes;
 
     return;
+}
+
+sub generate_background_tile {
+    my ( $self, $y_tile, $x_tile, $tile_size, $STAR_SEED, $max_bg_depth, $game_state, $c, $sprite_mult ) = @_;
+
+    my @sprites;
+
+    my $j    = $y_tile * $tile_size;
+    my $i    = $x_tile * $tile_size;
+    my $hash = mix( $STAR_SEED, $i, $j );
+    for ( 1 .. 1 ) {
+        my $px = $i + ( $hash % $tile_size );
+        $hash >>= 3;
+        my $py = $j + ( $hash % $tile_size );
+        $hash >>= 3;
+        my $pz = "0.$hash" * $max_bg_depth;
+        $hash >>= 3;
+        my $color =
+          $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
+        push @sprites, [ [ $px, $py, $pz ], $color, 0, $sprite_mult, "blob" ];
+    }
+
+    return \@sprites;
 }
 
 sub play_sound {
