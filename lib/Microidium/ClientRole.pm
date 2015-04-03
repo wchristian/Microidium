@@ -36,12 +36,9 @@ has local_player_id   => ( is => 'rw' );
 has network_player_id => ( is => 'rw' );
 has team_colors =>
   ( is => 'ro', default => sub { { 1 => [ .9, .9, .9, 1 ], 2 => [ .9, .7, .2, 1 ], 3 => [ .2, .8, 1, 1 ] } } );
-has music_is_playing => ( is => 'rw' );
-has tile_cache => ( is => 'ro', default => sub { {} } );
-
-my $max_trail = 45;
-my %trails;
-my @explosions;
+has music_is_playing  => ( is => 'rw' );
+has tile_cache        => ( is => 'ro', default => sub { {} } );
+has client_game_state => ( is => 'rw', default => sub { { max_trail => 45, trails => {}, explosions => [] } } );
 
 1;
 
@@ -172,24 +169,27 @@ sub update_client_game_state {
 sub update_trails {
     my ( $self, $game_state ) = @_;
 
+    my $max_trail = $self->client_game_state->{max_trail};
+    my $trails    = $self->client_game_state->{trails};
+
     my %actors = %{ $game_state->{actors} };
 
     for my $flier ( values %actors ) {
         next if $flier->{is_bullet};
 
-        my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
+        my $trail = $trails->{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
         push @{ $trail->{segments} },
           [ map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 ];
         shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
     }
 
-    for my $trail ( values %trails ) {
+    for my $trail ( values %{$trails} ) {
         next if $actors{ $trail->{id} };
 
         shift @{ $trail->{segments} };
         next if @{ $trail->{segments} };
 
-        delete $trails{ $trail->{id} };
+        delete $trails->{ $trail->{id} };
     }
 
     return;
@@ -198,16 +198,19 @@ sub update_trails {
 sub update_explosions {
     my ( $self, $game_state ) = @_;
 
-    @explosions = grep $_->{life} > 0, @explosions;
+    my $explosions = $self->client_game_state->{explosions};
+
+    @{$explosions} = grep $_->{life} > 0, @{$explosions};
+
     for my $event ( @{ $game_state->{events} } ) {
         next if $event->{type} ne "flier_died";
         my $scale = $event->{is_bullet} ? 0.3 : 1;
         my $life  = $event->{is_bullet} ? 1   : 1.5;
-        push @explosions,
+        push @{$explosions},
           { x => $event->{x}, y => $event->{y}, life => $life, scale => $scale, team => $event->{team} };
     }
 
-    $_->{life} -= 0.1 for @explosions;
+    $_->{life} -= 0.1 for @{$explosions};
 
     return;
 }
@@ -339,7 +342,8 @@ sub render_world {
                 }
             }
 
-            for my $trail ( values %trails ) {
+            my $client_game_state = $self->client_game_state;
+            for my $trail ( values %{ $client_game_state->{trails} } ) {
                 my @color = map { "$_" } @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
                 my $alpha = 0;
 
@@ -347,7 +351,7 @@ sub render_world {
 
                 for my $i ( 0 .. $#{ $trail->{segments} } - 2 ) {
                     my $segment = $trail->{segments}[$i];
-                    $alpha += 1 / $max_trail;
+                    $alpha += 1 / $client_game_state->{max_trail};
                     my $seg_alpha = $segment->[2] * $alpha;
                     $seg_alpha *= 0.2
                       if $segment->[1] < $self->game_state->{floor}
@@ -356,7 +360,7 @@ sub render_world {
                 }
             }
 
-            for my $ex ( @explosions ) {
+            for my $ex ( @{ $client_game_state->{explosions} } ) {
                 my @color = ( @{ $c->{ $ex->{team} } }[ 0 .. 2 ], 0.8 * $ex->{life} );
                 my $scale = $ex->{scale} * $ex->{life};
                 push @sprites, [ [ $ex->{x}, $ex->{y} ], \@color, 0, $scale, "bullet" ];
