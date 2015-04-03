@@ -57,6 +57,8 @@ sub _build_pryo {
             my ( $connection, $frame ) = @_;
             $self->log( "got: " . ( ref $frame ? ( $frame->{tick} || "input" ) : $frame ) );
             if ( $frame->isa( "Microidium::Gamestate" ) ) {
+                my $game_state = $self->game_state;
+                return if $frame->{tick} < $game_state->{tick};
                 $self->last_network_state( $frame );
             }
             elsif ( $frame->isa( "Microidium::GiveConnectionId" ) ) {
@@ -162,7 +164,7 @@ sub on_keyup {
 sub connect {
     my ( $self ) = @_;
     return if $self->in_network_game;
-    $self->pryo->connect( "127.0.0.1", 19366 );
+    $self->pryo->connect( 5, "127.0.0.1", 19366, 19366 );
     return;
 }
 
