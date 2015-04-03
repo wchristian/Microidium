@@ -36,11 +36,20 @@ has local_player_id   => ( is => 'rw' );
 has network_player_id => ( is => 'rw' );
 has team_colors =>
   ( is => 'ro', default => sub { { 1 => [ .9, .9, .9, 1 ], 2 => [ .9, .7, .2, 1 ], 3 => [ .2, .8, 1, 1 ] } } );
-has music_is_playing  => ( is => 'rw' );
-has tile_cache        => ( is => 'ro', default => sub { {} } );
-has client_game_state => ( is => 'rw', default => sub { { max_trail => 45, trails => {}, explosions => [] } } );
+has music_is_playing => ( is => 'rw' );
+has tile_cache => ( is => 'ro', default => sub { {} } );
+has client_game_state => ( is => 'rw', builder => 1 );
 
 1;
+
+sub _build_client_game_state {
+    {
+        max_trail  => 45,
+        trails     => {},
+        explosions => [],
+        camera     => shift->_build_camera,
+    };
+}
 
 sub _build_pryo {
     my ( $self ) = @_;
@@ -72,15 +81,7 @@ sub _build_pryo {
     return $pryo;
 }
 
-sub _build_client_state {
-    {
-        fire       => 0,
-        thrust     => 0,
-        turn_left  => 0,
-        turn_right => 0,
-        camera     => { x => 0, y => 0 },
-    };
-}
+sub _build_client_state { { fire => 0, thrust => 0, turn_left => 0, turn_right => 0 } }
 
 sub client_update_game_state {
     my ( $orig, $self, @args ) = @_;
@@ -225,7 +226,7 @@ sub render_world {
         $self->music_is_playing( 1 );
     }
 
-    my $cam = $self->client_state->{camera};
+    my $cam_pos = $self->client_game_state->{camera}{pos};
 
     my $STAR_SEED    = 0x9d2c5680;
     my $tile_size    = 512;
@@ -239,10 +240,10 @@ sub render_world {
 
     $self->with_sprite_setup(
         sub {
-            my $screen_bottom = $cam->{y} - $h;
-            my $screen_left   = $cam->{x} - $w;
-            my $screen_top    = $cam->{y} + $h;
-            my $screen_right  = $cam->{x} + $w;
+            my $screen_bottom = $cam_pos->{y} - $h;
+            my $screen_left   = $cam_pos->{x} - $w;
+            my $screen_top    = $cam_pos->{y} + $h;
+            my $screen_right  = $cam_pos->{x} + $w;
 
             my @markers = ( [ 1, 1, 1, 999999 ], 0, 0.2, "bullet" );
             my @sprites = (
@@ -254,15 +255,15 @@ sub render_world {
             );
 
             my $screen_bg_mult = 2.9;    # this relates to $max_bg_depth and fov, but i'm not sure how
-            my $screen_bottom_bg = $cam->{y} - $h * $screen_bg_mult;
-            my $screen_left_bg   = $cam->{x} - $w * $screen_bg_mult;
-            my $screen_top_bg    = $cam->{y} + $h * $screen_bg_mult;
-            my $screen_right_bg  = $cam->{x} + $w * $screen_bg_mult;
+            my $screen_bottom_bg = $cam_pos->{y} - $h * $screen_bg_mult;
+            my $screen_left_bg   = $cam_pos->{x} - $w * $screen_bg_mult;
+            my $screen_top_bg    = $cam_pos->{y} + $h * $screen_bg_mult;
+            my $screen_right_bg  = $cam_pos->{x} + $w * $screen_bg_mult;
 
             my $sprite_target_radius = 600;
             my $sprite_mult          = 2 * 2 * $sprite_target_radius / $self->sprite_size;
-            my $camera_tile_y        = floor( $cam->{y} / $tile_size );
-            my $camera_tile_x        = floor( $cam->{x} / $tile_size );
+            my $camera_tile_y        = floor( $cam_pos->{y} / $tile_size );
+            my $camera_tile_x        = floor( $cam_pos->{x} / $tile_size );
 
             my $bottom_start = $camera_tile_y * $tile_size;
             while ( $bottom_start + $tile_size + $sprite_target_radius > $screen_bottom_bg ) {
@@ -374,7 +375,7 @@ sub render_world {
     push $self->timestamps, [ sprite_render_end => time ];
 
     my $player_actor = $self->local_player_actor;
-    my $audio_pickup = $player_actor ? $player_actor : $cam;
+    my $audio_pickup = $player_actor ? $player_actor : $cam_pos;
 
     my @new_bullets = grep $_->{is_bullet}, map $actors{$_}, @{ $game_state->{new_actors} };
     $self->play_sound( "shot", $_, $audio_pickup, 3 ) for @new_bullets;
@@ -409,10 +410,10 @@ sub generate_background_tile {
 }
 
 sub play_sound {
-    my ( $self, $sound_id, $flier, $cam, $falloff ) = @_;
+    my ( $self, $sound_id, $flier, $position, $falloff ) = @_;
 
-    my $x_diff = $flier->{x} - $cam->{x};
-    my $distance = sqrt( ( $x_diff )**2 + ( $flier->{y} - $cam->{y} )**2 );
+    my $x_diff = $flier->{x} - $position->{x};
+    my $distance = sqrt( ( $x_diff )**2 + ( $flier->{y} - $position->{y} )**2 );
     $distance /= $falloff;
     return if $distance > 255;
 

@@ -597,7 +597,7 @@ sub with_sprite_setup_render {
     glBindVertexArray $self->vaos->{sprite};
 
     my $uniforms = $self->uniforms->{sprites};
-    glUniform2fARB $uniforms->{camera}, @{ $self->client_state->{camera} }{qw( x y )};
+    glUniform2fARB $uniforms->{camera}, @{ $self->client_game_state->{camera}{pos} }{qw( x y )};
 
     glActiveTextureARB GL_TEXTURE0;
 

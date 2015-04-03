@@ -8,21 +8,19 @@ use Moo::Role;
 
 use constant DEG2RAD => 0.01745329251994329576923690768489;
 
-has $_ => ( is => 'ro', builder => 1 ) for qw( spring cam_effect_accums );
-
-sub _build_cam_effect_accums {
-    return { map { $_ => [ ( 0 ) x 30 ] } THRUSTS };
-}
-
-sub _build_spring {
+sub _build_camera {
     {
-        anchor_pos => -50,
-        length     => 50,
-        stiffness  => -100,
-        damping    => -2.4,
-        mass       => .1,
-        mass_pos   => [ 0, 0 ],
-        mass_vel   => [ 0, 0 ]
+        pos    => { x => 0, y => 0 },
+        spring => {
+            anchor_pos => -50,
+            length     => 50,
+            stiffness  => -100,
+            damping    => -2.4,
+            mass       => .1,
+            mass_pos   => [ 0, 0 ],
+            mass_vel   => [ 0, 0 ]
+        },
+        cam_effect_accums => { map { $_ => [ ( 0 ) x 30 ] } THRUSTS },
     };
 }
 
@@ -30,11 +28,12 @@ sub update_camera {
     my ( $self, $game_state ) = @_;
 
     my $player_actor = $self->local_player_actor;
-    my $cam          = $self->client_state->{camera};
-    my $spring       = $self->spring;
+    my $camera       = $self->client_game_state->{camera};
+    my $cam_pos      = $camera->{pos};
+    my $spring       = $camera->{spring};
 
     if ( $player_actor ) {
-        my $cam_effect_accums = $self->cam_effect_accums;
+        my $cam_effect_accums = $camera->{cam_effect_accums};
         for my $thrust ( THRUSTS ) {
             push @{ $cam_effect_accums->{$thrust} }, $player_actor->{$thrust};
             shift @{ $cam_effect_accums->{$thrust} };
@@ -48,14 +47,14 @@ sub update_camera {
         my $cam_x_target = $player_actor->{x} + ( $dist * sin( DEG2RAD * $player_actor->{rot} ) );
         my $cam_y_target = $player_actor->{y} + ( $dist * cos( DEG2RAD * $player_actor->{rot} ) );
 
-        $cam_y_target = $self->game_state->{floor}   if $cam_y_target < $self->game_state->{floor};
-        $cam_y_target = $self->game_state->{ceiling} if $cam_y_target > $self->game_state->{ceiling};
+        $cam_y_target = $game_state->{floor}   if $cam_y_target < $game_state->{floor};
+        $cam_y_target = $game_state->{ceiling} if $cam_y_target > $game_state->{ceiling};
 
-        my $diff_x = $cam_x_target - $cam->{x};
-        my $diff_y = $cam_y_target - $cam->{y};
+        my $diff_x = $cam_x_target - $cam_pos->{x};
+        my $diff_y = $cam_y_target - $cam_pos->{y};
         my $damp   = 0.03;
-        $cam->{x} += $diff_x * $damp;
-        $cam->{y} += $diff_y * $damp;
+        $cam_pos->{x} += $diff_x * $damp;
+        $cam_pos->{y} += $diff_y * $damp;
 
         for my $event ( @{ $game_state->{events} } ) {
             next if $event->{type} ne "flier_died";
@@ -85,7 +84,7 @@ sub update_camera {
         my $acceleration = ( $spring_force + $damp_force ) / $spring->{mass};
         $spring->{mass_vel}[$i] += $acceleration * 1 / 60;
         $spring->{mass_pos}[$i] += $spring->{mass_vel}[$i] * 1 / 60;
-        $cam->{ $i ? "x" : "y" } += $spring->{mass_pos}[$i];
+        $cam_pos->{ $i ? "x" : "y" } += $spring->{mass_pos}[$i];
     }
 
     return;
