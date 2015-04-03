@@ -217,7 +217,7 @@ sub update_explosions {
 }
 
 sub render_world {
-    my ( $self, $game_state ) = @_;
+    my ( $self, $game_state, $client_game_state ) = @_;
 
     if ( !$self->music_is_playing ) {
         my $music = SDL::Mixer::Music::load_MUS( dfile 'vecinec22.ogg' );
@@ -226,7 +226,7 @@ sub render_world {
         $self->music_is_playing( 1 );
     }
 
-    my $cam_pos = $self->client_game_state->{camera}{pos};
+    my $cam_pos = $client_game_state->{camera}{pos};
 
     my $STAR_SEED    = 0x9d2c5680;
     my $tile_size    = 512;
@@ -343,7 +343,6 @@ sub render_world {
                 }
             }
 
-            my $client_game_state = $self->client_game_state;
             for my $trail ( values %{ $client_game_state->{trails} } ) {
                 my @color = map { "$_" } @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
                 my $alpha = 0;
