@@ -39,6 +39,7 @@ has team_colors =>
 has music_is_playing => ( is => 'rw' );
 has tile_cache => ( is => 'ro', default => sub { {} } );
 
+my $max_trail = 45;
 my %trails;
 my @explosions;
 
@@ -162,6 +163,51 @@ sub update_client_game_state {
     my ( $self, $game_state ) = @_;
 
     $self->update_camera( $game_state );
+    $self->update_trails( $game_state );
+    $self->update_explosions( $game_state );
+
+    return;
+}
+
+sub update_trails {
+    my ( $self, $game_state ) = @_;
+
+    my %actors = %{ $game_state->{actors} };
+
+    for my $flier ( values %actors ) {
+        next if $flier->{is_bullet};
+
+        my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
+        push @{ $trail->{segments} },
+          [ map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 ];
+        shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
+    }
+
+    for my $trail ( values %trails ) {
+        next if $actors{ $trail->{id} };
+
+        shift @{ $trail->{segments} };
+        next if @{ $trail->{segments} };
+
+        delete $trails{ $trail->{id} };
+    }
+
+    return;
+}
+
+sub update_explosions {
+    my ( $self, $game_state ) = @_;
+
+    @explosions = grep $_->{life} > 0, @explosions;
+    for my $event ( @{ $game_state->{events} } ) {
+        next if $event->{type} ne "flier_died";
+        my $scale = $event->{is_bullet} ? 0.3 : 1;
+        my $life  = $event->{is_bullet} ? 1   : 1.5;
+        push @explosions,
+          { x => $event->{x}, y => $event->{y}, life => $life, scale => $scale, team => $event->{team} };
+    }
+
+    $_->{life} -= 0.1 for @explosions;
 
     return;
 }
@@ -250,8 +296,6 @@ sub render_world {
 
             @sprites = sort { $b->[0][2] <=> $a->[0][2] } @sprites;
 
-            my $max_trail = 45;
-
             for my $flier ( values %actors ) {
                 my @color = @{
                     $flier->{is_bullet}
@@ -272,20 +316,14 @@ sub render_world {
                   ];
 
                 if ( !$flier->{is_bullet} ) {
+                    my @wing_color = @{ $c->{ $flier->{team} } };
+                    if (   $flier->{y} < $self->game_state->{floor}
+                        or $flier->{y} > $self->game_state->{ceiling} )
                     {
-                        my @color = @{ $c->{ $flier->{team} } };
-                        if (   $flier->{y} < $self->game_state->{floor}
-                            or $flier->{y} > $self->game_state->{ceiling} )
-                        {
-                            $color[$_] *= 0.5 for 0 .. 2;
-                        }
-                        push @sprites,
-                          [ [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, "player1_wings", 1 ];
+                        $wing_color[$_] *= 0.5 for 0 .. 2;
                     }
-                    my $trail = $trails{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
-                    push @{ $trail->{segments} },
-                      [ map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 ];
-                    shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
+                    push @sprites,
+                      [ [ $flier->{x}, $flier->{y}, ], \@wing_color, $flier->{rot}, 1.5, "player1_wings", 1 ];
 
                     my @color = @{ $c->{ $flier->{team} } };
                     $color[3] *= 0.2
@@ -302,14 +340,6 @@ sub render_world {
             }
 
             for my $trail ( values %trails ) {
-                if ( !$actors{ $trail->{id} } ) {
-                    shift @{ $trail->{segments} };
-                    if ( !@{ $trail->{segments} } ) {
-                        delete $trails{ $trail->{id} };
-                        next;
-                    }
-                }
-
                 my @color = map { "$_" } @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
                 my $alpha = 0;
 
@@ -326,20 +356,10 @@ sub render_world {
                 }
             }
 
-            @explosions = grep $_->{life} > 0, @explosions;
-            for my $event ( @{ $game_state->{events} } ) {
-                next if $event->{type} ne "flier_died";
-                my $scale = $event->{is_bullet} ? 0.3 : 1;
-                my $life  = $event->{is_bullet} ? 1   : 1.5;
-                push @explosions,
-                  { x => $event->{x}, y => $event->{y}, life => $life, scale => $scale, team => $event->{team} };
-            }
-
             for my $ex ( @explosions ) {
                 my @color = ( @{ $c->{ $ex->{team} } }[ 0 .. 2 ], 0.8 * $ex->{life} );
                 my $scale = $ex->{scale} * $ex->{life};
                 push @sprites, [ [ $ex->{x}, $ex->{y} ], \@color, 0, $scale, "bullet" ];
-                $ex->{life} -= 0.1;
             }
 
             push $self->timestamps, [ sprite_prepare_end => time ];
