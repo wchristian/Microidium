@@ -30,19 +30,17 @@ use Moo::Role;
 
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
-has display_scale      => ( is => 'rw', default => sub { 600 } );
-has width              => ( is => 'rw', default => sub { 800 } );
-has height             => ( is => 'rw', default => sub { 600 } );
-has fb_height          => ( is => 'rw', default => sub { 600 } );
-has fb_height_max      => ( is => 'rw', default => sub { 600 } );
-has sprite_size        => ( is => 'rw', default => sub { 160 } );
-has fov                => ( is => 'rw', default => sub { 90 } );
-has frame              => ( is => 'rw', default => sub { 0 } );
-has fps                => ( is => 'rw', default => sub { 0 } );
-has frame_time         => ( is => 'rw', default => sub { 0 } );
-has last_frame_time    => ( is => 'rw', default => sub { time } );
-has current_frame_time => ( is => 'rw', default => sub { time } );
-has $_ => ( is => 'rw', default => sub { 0 } ) for qw( render_time world_time ui_time );
+has display_scale   => ( is => 'rw', default => sub { 600 } );
+has width           => ( is => 'rw', default => sub { 800 } );
+has height          => ( is => 'rw', default => sub { 600 } );
+has fb_height       => ( is => 'rw', default => sub { 600 } );
+has fb_height_max   => ( is => 'rw', default => sub { 600 } );
+has sprite_size     => ( is => 'rw', default => sub { 160 } );
+has fov             => ( is => 'rw', default => sub { 90 } );
+has frame           => ( is => 'rw', default => sub { 0 } );
+has fps             => ( is => 'rw', default => sub { 0 } );
+has frame_time      => ( is => 'rw', default => sub { 0 } );
+has last_frame_time => ( is => 'rw', default => sub { time } );
 
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
@@ -191,15 +189,14 @@ sub on_move {
 
 sub on_show {
     my ( $self ) = @_;
-    $self->frame( $self->frame + 1 );
-    $self->last_frame_time( $self->current_frame_time );
-    push $self->timestamps, [ frame_start => time ];
+
     my $now = time;
-    $self->current_frame_time( $now );
-    my $elapsed = $now - $self->last_frame_time;
-    $self->smooth_update( frame_time => $elapsed );
+    push $self->timestamps, [ frame_start => $now ];
+    $self->smooth_update( frame_time => $now - $self->last_frame_time );
+    $self->last_frame_time( $now );
+    $self->frame( $self->frame + 1 );
+
     $self->render;
-    $self->smooth_update( render_time => time - $now );
     $self->render_timings;
 
     SDL::Video::GL_swap_buffers;
@@ -227,13 +224,11 @@ sub render {
 
     $self->update_client_game_state( $game_state );
 
-    my $now = time;
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{post_process};
     glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_world( $game_state );
-    $self->smooth_update( world_time => time - $now );
     push $self->timestamps, [ world_render_end => time ];
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{screen_target};
@@ -250,9 +245,7 @@ sub render {
     $self->render_screen_target;
     push $self->timestamps, [ screen_render_end => time ];
 
-    my $now2 = time;
     $self->render_ui( $game_state );
-    $self->smooth_update( ui_time => time - $now2 );
     push $self->timestamps, [ ui_render_end => time ];
 
     return;
