@@ -307,8 +307,8 @@ sub render_world {
 
             for my $flier ( values %actors ) {
                 my @color = @{
-                    $flier->{is_bullet}
-                    ? ( ( $flier->{created} + 4 >= $game_state->{tick} ) ? [ 0, 0, 0, 1 ] : $c->{ $flier->{team} } )
+                      ( $flier->{is_bullet} and $flier->{created} + 4 >= $game_state->{tick} )
+                    ? [ 0, 0, 0, 1 ]
                     : $c->{ $flier->{team} }
                 };
                 if ( $flier->{y} < $game_state->{floor} or $flier->{y} > $game_state->{ceiling} ) {
@@ -342,15 +342,11 @@ sub render_world {
                 }
             }
 
-            my $max_trail = $client_game_state->{max_trail};
-            my $trail_inc = 1 / $max_trail;
+            my $trail_inc = 1 / $client_game_state->{max_trail};
             for my $trail ( values %{ $client_game_state->{trails} } ) {
                 my $segments = $trail->{segments};
-                for my $i ( 0 .. $#{ $trail->{segments} } - 2 ) {
-                    my ( $brightness, $seg_data ) = @{ $segments->[$i] };
-                    $seg_data->[1][3] = $brightness * $trail_inc * $i;
-                    push @sprites, $seg_data;
-                }
+                $segments->[$_][1][1][3] = $segments->[$_][0] * $trail_inc * ( $_ + 1 ) for 0 .. $#{$segments} - 2;
+                push @sprites, map $segments->[$_][1], 0 .. $#{$segments} - 2;
             }
 
             for my $ex ( @{ $client_game_state->{explosions} } ) {
