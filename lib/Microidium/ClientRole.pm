@@ -43,12 +43,7 @@ has client_game_state => ( is => 'rw', builder => 1 );
 1;
 
 sub _build_client_game_state {
-    {
-        max_trail  => 45,
-        trails     => {},
-        explosions => [],
-        camera     => shift->_build_camera,
-    };
+    { max_trail => 45, trails => {}, explosions => [], camera => shift->_build_camera };
 }
 
 sub _build_pryo {
