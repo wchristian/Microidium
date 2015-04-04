@@ -174,13 +174,18 @@ sub update_trails {
     my $trails    = $self->client_game_state->{trails};
 
     my %actors = %{ $game_state->{actors} };
+    my $c      = $self->team_colors;
 
     for my $flier ( values %actors ) {
         next if $flier->{is_bullet};
 
         my $trail = $trails->{ $flier->{id} } ||= { team => $flier->{team}, id => $flier->{id} };
-        push @{ $trail->{segments} },
-          [ map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 ];
+        my ( $x, $y, $brightness ) =
+          ( map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 );
+        $brightness *= 0.2 if $y < $game_state->{floor} or $y > $game_state->{ceiling};
+        my @color = map { $_ * 1.5 } @{ $c->{ $flier->{team} } }[ 0 .. 2 ];
+        my @sprite_data = ( [ $x, $y ], [ @color, 0 ], 0, 0.5, "blob" );
+        push @{ $trail->{segments} }, [ $brightness, \@sprite_data ];
         shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
     }
 
@@ -337,18 +342,14 @@ sub render_world {
                 }
             }
 
+            my $max_trail = $client_game_state->{max_trail};
+            my $trail_inc = 1 / $max_trail;
             for my $trail ( values %{ $client_game_state->{trails} } ) {
-                my @color = map { "$_" } @{ $c->{ $trail->{team} } }[ 0 .. 2 ];
-                my $alpha = 0;
-
-                $_ *= 1.5 for @color;
-
+                my $segments = $trail->{segments};
                 for my $i ( 0 .. $#{ $trail->{segments} } - 2 ) {
-                    my $segment = $trail->{segments}[$i];
-                    $alpha += 1 / $client_game_state->{max_trail};
-                    my $seg_alpha = $segment->[2] * $alpha;
-                    $seg_alpha *= 0.2 if $segment->[1] < $game_state->{floor} or $segment->[1] > $game_state->{ceiling};
-                    push @sprites, [ [ $segment->[0], $segment->[1] ], [ @color, $seg_alpha ], 0, 0.5, "blob" ];
+                    my ( $brightness, $seg_data ) = @{ $segments->[$i] };
+                    $seg_data->[1][3] = $brightness * $trail_inc * $i;
+                    push @sprites, $seg_data;
                 }
             }
 
