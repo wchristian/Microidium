@@ -306,9 +306,7 @@ sub render_world {
                     ? ( ( $flier->{created} + 4 >= $game_state->{tick} ) ? [ 0, 0, 0, 1 ] : $c->{ $flier->{team} } )
                     : $c->{ $flier->{team} }
                 };
-                if (   $flier->{y} < $self->game_state->{floor}
-                    or $flier->{y} > $self->game_state->{ceiling} )
-                {
+                if ( $flier->{y} < $game_state->{floor} or $flier->{y} > $game_state->{ceiling} ) {
                     $color[$_] *= 0.5 for 0 .. 2;
                 }
                 push @sprites,
@@ -321,18 +319,14 @@ sub render_world {
 
                 if ( !$flier->{is_bullet} ) {
                     my @wing_color = @{ $c->{ $flier->{team} } };
-                    if (   $flier->{y} < $self->game_state->{floor}
-                        or $flier->{y} > $self->game_state->{ceiling} )
-                    {
+                    if ( $flier->{y} < $game_state->{floor} or $flier->{y} > $game_state->{ceiling} ) {
                         $wing_color[$_] *= 0.5 for 0 .. 2;
                     }
                     push @sprites,
                       [ [ $flier->{x}, $flier->{y}, ], \@wing_color, $flier->{rot}, 1.5, "player1_wings", 1 ];
 
                     my @color = @{ $c->{ $flier->{team} } };
-                    $color[3] *= 0.2
-                      if $flier->{y} < $self->game_state->{floor}
-                      or $flier->{y} > $self->game_state->{ceiling};
+                    $color[3] *= 0.2 if $flier->{y} < $game_state->{floor} or $flier->{y} > $game_state->{ceiling};
                     my %flames = qw(
                       is_thrusting     thrust_flame
                       is_turning_right thrust_right_flame
@@ -353,9 +347,7 @@ sub render_world {
                     my $segment = $trail->{segments}[$i];
                     $alpha += 1 / $client_game_state->{max_trail};
                     my $seg_alpha = $segment->[2] * $alpha;
-                    $seg_alpha *= 0.2
-                      if $segment->[1] < $self->game_state->{floor}
-                      or $segment->[1] > $self->game_state->{ceiling};
+                    $seg_alpha *= 0.2 if $segment->[1] < $game_state->{floor} or $segment->[1] > $game_state->{ceiling};
                     push @sprites, [ [ $segment->[0], $segment->[1] ], [ @color, $seg_alpha ], 0, 0.5, "blob" ];
                 }
             }
