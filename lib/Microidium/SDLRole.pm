@@ -44,6 +44,9 @@ has last_frame_time => ( is => 'rw', default => sub { time } );
 
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
+has game_state_history => ( is => 'rw', default => sub { [] } );
+has max_history        => ( is => 'rw', default => sub { 10 } );
+
 has $_ => ( is => 'ro', default => sub { {} } ) for qw( textures shaders uniforms attribs vbos vaos );
 has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
@@ -182,6 +185,8 @@ sub on_move {
     $self->finalize_frame_timings;
     my $new_game_state = clone $self->game_state;
     $self->update_game_state( $new_game_state, $self->client_state );
+    push @{ $self->game_state_history }, $self->game_state;
+    shift @{ $self->game_state_history } while @{ $self->game_state_history } > $self->max_history;
     $self->game_state( $new_game_state );
     push $self->timestamps, [ move_end => time ];
     return;
@@ -217,11 +222,24 @@ sub finalize_frame_timings {
     return;
 }
 
+sub clone_client_game_state {
+    my $cgs = shift->client_game_state;
+    my $bak = delete $cgs->{trails};
+    my $new = clone $cgs;
+    $cgs->{trails} = $bak;
+    %{ $new->{trails} } = %{$bak};
+    return $new;
+}
+
 sub render {
     my ( $self ) = @_;
 
-    my $game_state = $self->game_state;
-    $self->update_client_game_state( $game_state );
+    my $game_state            = $self->game_state;
+    my $new_client_game_state = $self->clone_client_game_state;
+    $self->update_client_game_state( $game_state, $new_client_game_state );
+    push @{ $self->client_game_state_history }, $self->client_game_state;
+    shift @{ $self->client_game_state_history } while @{ $self->client_game_state_history } > $self->max_history;
+    $self->client_game_state( $new_client_game_state );
     my $client_game_state = $self->client_game_state;
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{post_process};

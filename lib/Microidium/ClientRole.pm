@@ -41,6 +41,7 @@ has team_colors =>
 has music_is_playing => ( is => 'rw' );
 has tile_cache => ( is => 'ro', default => sub { {} } );
 has client_game_state => ( is => 'rw', builder => 1 );
+has client_game_state_history => ( is => 'rw', default => sub { [] } );
 
 1;
 
