@@ -155,20 +155,20 @@ sub connect {
 }
 
 sub update_client_game_state {
-    my ( $self, $game_state ) = @_;
+    my ( $self, $game_state, $new_client_game_state ) = @_;
 
-    $self->update_camera( $game_state );
-    $self->update_trails( $game_state );
-    $self->update_explosions( $game_state );
+    $self->update_camera( $game_state, $new_client_game_state );
+    $self->update_trails( $game_state, $new_client_game_state );
+    $self->update_explosions( $game_state, $new_client_game_state );
 
     return;
 }
 
 sub update_trails {
-    my ( $self, $game_state ) = @_;
+    my ( $self, $game_state, $new_client_game_state ) = @_;
 
-    my $max_trail = $self->client_game_state->{max_trail};
-    my $trails    = $self->client_game_state->{trails};
+    my $max_trail = $new_client_game_state->{max_trail};
+    my $trails    = $new_client_game_state->{trails};
 
     my %actors = %{ $game_state->{actors} };
     my $c      = $self->team_colors;
@@ -199,9 +199,9 @@ sub update_trails {
 }
 
 sub update_explosions {
-    my ( $self, $game_state ) = @_;
+    my ( $self, $game_state, $new_client_game_state ) = @_;
 
-    my $explosions = $self->client_game_state->{explosions};
+    my $explosions = $new_client_game_state->{explosions};
 
     @{$explosions} = grep $_->{life} > 0, @{$explosions};
 

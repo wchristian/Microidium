@@ -25,10 +25,10 @@ sub _build_camera {
 }
 
 sub update_camera {
-    my ( $self, $game_state ) = @_;
+    my ( $self, $game_state, $new_client_game_state ) = @_;
 
     my $player_actor = $self->local_player_actor;
-    my $camera       = $self->client_game_state->{camera};
+    my $camera       = $new_client_game_state->{camera};
     my $cam_pos      = $camera->{pos};
     my $spring       = $camera->{spring};
 
