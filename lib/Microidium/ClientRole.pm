@@ -173,6 +173,7 @@ sub update_trails {
 
     my %actors = %{ $game_state->{actors} };
     my $c      = $self->team_colors;
+    my $tick   = $game_state->{tick};
 
     for my $flier ( values %actors ) {
         next if $flier->{is_bullet};
@@ -183,7 +184,7 @@ sub update_trails {
         $brightness *= 0.2 if $y < $game_state->{floor} or $y > $game_state->{ceiling};
         my @color = map { $_ * 1.5 } @{ $c->{ $flier->{team} } }[ 0 .. 2 ];
         my @sprite_data = ( [ $x, $y ], [ @color, 0 ], 0, 0.5, "blob" );
-        push @{ $trail->{segments} }, [ $brightness, \@sprite_data ];
+        push @{ $trail->{segments} }, { brightness => $brightness, created => $tick, sprite => \@sprite_data };
         shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
     }
 
@@ -341,11 +342,13 @@ sub render_world {
                 }
             }
 
-            my $trail_inc = 1 / $client_game_state->{max_trail};
+            my $current_tick = $game_state->{tick};
+            my $age_offset   = 1 + $client_game_state->{max_trail} - $current_tick;
+            my $trail_inc    = 1 / $client_game_state->{max_trail};
             for my $trail ( values %{ $client_game_state->{trails} } ) {
                 my $segments = $trail->{segments};
-                $segments->[$_][1][1][3] = $segments->[$_][0] * $trail_inc * ( $_ + 1 ) for 0 .. $#{$segments} - 2;
-                push @sprites, map $segments->[$_][1], 0 .. $#{$segments} - 2;
+                $_->{sprite}[1][3] = $_->{brightness} * $trail_inc * ( $age_offset + $_->{created} ) for @{$segments};
+                push @sprites, map $_->{sprite}, @{$segments}[ 0 .. $#{$segments} - 2 ];
             }
 
             for my $ex ( @{ $client_game_state->{explosions} } ) {
