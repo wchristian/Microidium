@@ -179,15 +179,22 @@ sub change_fov {
     return;
 }
 
+sub historize {
+    my ( $self, $new, $type ) = @_;
+    my $h_meth = $type . "_history";
+    push @{ $self->$h_meth }, $self->$type;
+    shift @{ $self->$h_meth } while @{ $self->$h_meth } > $self->max_history;
+    $self->$type( $new );
+    return;
+}
+
 sub on_move {
     my ( $self ) = @_;
     push $self->timestamps, [ move_start => time ];
     $self->finalize_frame_timings;
     my $new_game_state = clone $self->game_state;
     $self->update_game_state( $new_game_state, $self->client_state );
-    push @{ $self->game_state_history }, $self->game_state;
-    shift @{ $self->game_state_history } while @{ $self->game_state_history } > $self->max_history;
-    $self->game_state( $new_game_state );
+    $self->historize( $new_game_state, "game_state" );
     push $self->timestamps, [ move_end => time ];
     return;
 }
@@ -234,12 +241,12 @@ sub clone_client_game_state {
 sub render {
     my ( $self ) = @_;
 
-    my $game_state            = $self->game_state;
+    my $game_state = $self->game_state;
+
     my $new_client_game_state = $self->clone_client_game_state;
     $self->update_client_game_state( $game_state, $new_client_game_state );
-    push @{ $self->client_game_state_history }, $self->client_game_state;
-    shift @{ $self->client_game_state_history } while @{ $self->client_game_state_history } > $self->max_history;
-    $self->client_game_state( $new_client_game_state );
+    $self->historize( $new_client_game_state, "client_game_state" );
+
     my $client_game_state = $self->client_game_state;
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{post_process};
