@@ -6,6 +6,7 @@ use strictures;
 
 use List::Util qw( first min max );
 use Math::Vec ();
+use Data::GUID;
 
 use Moo::Role;
 
@@ -25,6 +26,7 @@ sub _build_game_state {
         ceiling       => 3000,
         floor         => 0,
         gravity       => -0.15,
+        id            => Data::GUID->new->as_base64,
     };
 }
 

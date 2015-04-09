@@ -38,15 +38,24 @@ has local_player_id   => ( is => 'rw' );
 has network_player_id => ( is => 'rw' );
 has team_colors =>
   ( is => 'ro', default => sub { { 1 => [ .9, .9, .9, 1 ], 2 => [ .9, .7, .2, 1 ], 3 => [ .2, .8, 1, 1 ] } } );
-has music_is_playing => ( is => 'rw' );
-has tile_cache => ( is => 'ro', default => sub { {} } );
-has client_game_state => ( is => 'rw', builder => 1 );
+has music_is_playing  => ( is => 'rw' );
+has tile_cache        => ( is => 'ro', default => sub { {} } );
+has client_game_state => ( is => 'rw', lazy => 1, builder => 1 );
 has client_game_state_history => ( is => 'rw', default => sub { [] } );
 
 1;
 
 sub _build_client_game_state {
-    { max_trail => 45, trails => {}, explosions => [], camera => shift->_build_camera };
+    my ( $self ) = @_;
+    my $game_state = $self->game_state;
+    return {
+        max_trail  => 45,
+        trails     => {},
+        explosions => [],
+        camera     => $self->_build_camera,
+        id         => $game_state->{id},
+        tick       => $game_state->{tick} - 1,
+    };
 }
 
 sub _build_pryo {
@@ -161,6 +170,7 @@ sub update_client_game_state {
     $self->update_camera( $game_state, $new_client_game_state );
     $self->update_trails( $game_state, $new_client_game_state );
     $self->update_explosions( $game_state, $new_client_game_state );
+    $new_client_game_state->{tick} = $game_state->{tick};
 
     return;
 }

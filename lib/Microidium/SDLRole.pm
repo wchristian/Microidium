@@ -181,9 +181,12 @@ sub change_fov {
 
 sub historize {
     my ( $self, $new, $type ) = @_;
-    my $h_meth = $type . "_history";
-    push @{ $self->$h_meth }, $self->$type;
-    shift @{ $self->$h_meth } while @{ $self->$h_meth } > $self->max_history;
+    my $old = $self->$type;
+    return if $new->{tick} == $old->{tick};
+    my $h_meth  = $type . "_history";
+    my $history = $self->$h_meth;
+    push @{$history}, $old;
+    shift @{$history} while @{$history} > $self->max_history;
     $self->$type( $new );
     return;
 }
@@ -238,22 +241,41 @@ sub clone_client_game_state {
     return $new;
 }
 
-sub render {
+sub synch_client_game_state {
     my ( $self ) = @_;
 
     my $game_state = $self->game_state;
+    my $game_id    = $game_state->{id};
 
-    my $new_client_game_state = $self->clone_client_game_state;
-    $self->update_client_game_state( $game_state, $new_client_game_state );
-    $self->historize( $new_client_game_state, "client_game_state" );
+    $self->client_game_state( $self->_build_client_game_state ) if $self->client_game_state->{id} ne $game_id;
 
-    my $client_game_state = $self->client_game_state;
+    my $cgs_tick = $self->client_game_state->{tick};
+
+    my @candidates = grep $cgs_tick < $_->{tick} && $game_id eq $_->{id},
+      @{ $self->game_state_history }, $self->game_state;
+    @candidates = sort { $a <=> $b } @candidates;
+
+    while ( @candidates and $self->client_game_state->{tick} < $game_state->{tick} ) {
+        my $game_state            = shift @candidates;
+        my $new_client_game_state = $self->clone_client_game_state;
+        $self->update_client_game_state( $game_state, $new_client_game_state );
+        $self->historize( $new_client_game_state, "client_game_state" );
+    }
+
+    return;
+}
+
+sub render {
+    my ( $self ) = @_;
+
+    $self->synch_client_game_state;
+    my $game_state = $self->game_state;
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{post_process};
     glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
-    $self->render_world( $game_state, $client_game_state );
+    $self->render_world( $game_state, $self->client_game_state );
     push $self->timestamps, [ world_render_end => time ];
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{screen_target};
