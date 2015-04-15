@@ -281,24 +281,20 @@ sub render_world {
             my $camera_tile_x        = floor( $cam_pos->{x} / $tile_size );
 
             my $bottom_start = $camera_tile_y * $tile_size;
-            while ( $bottom_start + $tile_size + $sprite_target_radius > $screen_bottom_bg ) {
-                $bottom_start -= $tile_size;
-            }
+            my $bottom_diff  = $bottom_start + $tile_size + $sprite_target_radius - $screen_bottom_bg;
+            $bottom_start -= int( $bottom_diff / $tile_size ) * $tile_size;
 
             my $top_end = $camera_tile_y * $tile_size;
-            while ( $top_end - $sprite_target_radius < $screen_top_bg ) {
-                $top_end += $tile_size;
-            }
+            my $top_diff = $screen_top_bg - ( $top_end - $sprite_target_radius );
+            $top_end += int( $top_diff / $tile_size ) * $tile_size;
 
             my $left_start = $camera_tile_x * $tile_size;
-            while ( $left_start + $tile_size + $sprite_target_radius > $screen_left_bg ) {
-                $left_start -= $tile_size;
-            }
+            my $left_diff  = $left_start + $tile_size + $sprite_target_radius - $screen_left_bg;
+            $left_start -= int( $left_diff / $tile_size ) * $tile_size;
 
             my $right_end = $camera_tile_x * $tile_size;
-            while ( $right_end - $sprite_target_radius < $screen_right_bg ) {
-                $right_end += $tile_size;
-            }
+            my $right_diff = $screen_right_bg - ( $right_end - $sprite_target_radius );
+            $right_end += int( $right_diff / $tile_size ) * $tile_size;
 
             my $tile_cache = $self->tile_cache;
 
