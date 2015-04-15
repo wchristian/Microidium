@@ -427,13 +427,13 @@ sub init_sprites {
     glEnableVertexAttribArrayARB $attribs->{scale};
     glEnableVertexAttribArrayARB $attribs->{r_scale};
 
-    my $value_count = 4 + 3 + 1 + 1 + 1;
+    my $value_count = 3 + 4 + 1 + 1 + 1;
     my $stride      = 4 * $value_count;    # bytes * counts
-    glVertexAttribPointerARB_c $attribs->{color}, 4, GL_FLOAT, GL_FALSE, $stride, 0;
-    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 4 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 ) * 4;
-    glVertexAttribPointerARB_c $attribs->{r_scale},  1, GL_FLOAT, GL_FALSE, $stride, ( 4 + 3 + 1 + 1 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{offset},   3, GL_FLOAT, GL_FALSE, $stride, ( 0 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{color},    4, GL_FLOAT, GL_FALSE, $stride, ( 3 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{rotation}, 1, GL_FLOAT, GL_FALSE, $stride, ( 3 + 4 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{scale},    1, GL_FLOAT, GL_FALSE, $stride, ( 3 + 4 + 1 ) * 4;
+    glVertexAttribPointerARB_c $attribs->{r_scale},  1, GL_FLOAT, GL_FALSE, $stride, ( 3 + 4 + 1 + 1 ) * 4;
 
     glBindVertexArray 0;
 
@@ -682,12 +682,12 @@ sub send_sprite_datas {
     my ( $self, @datas ) = @_;
     my $sprites = $self->sprites;
     for my $sprite ( @datas ) {
-        my ( $location, $color, $rotation, $scale, $texture, $r_scale ) = @{$sprite};
+        my ( $texture, $location, $color, $rotation, $scale, $r_scale ) = @{$sprite};
         $location->[2] //= 0;
         $color ||= [ 1, 1, 1, 1 ];
         $scale   //= 1;
         $r_scale //= 0;
-        push @{ $sprites->{$texture} }, [ @{$color}, @{$location}, $rotation, $scale, $r_scale ];
+        push @{ $sprites->{$texture} }, [ @{$location}, @{$color}, $rotation, $scale, $r_scale ];
     }
     return;
 }
