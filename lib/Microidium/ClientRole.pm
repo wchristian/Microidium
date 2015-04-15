@@ -193,7 +193,7 @@ sub update_trails {
           ( map( $_ - 2.5 + rand 5, $flier->{x}, $flier->{y} ), $flier->{is_thrusting} ? 1 : 0.3 );
         $brightness *= 0.2 if $y < $game_state->{floor} or $y > $game_state->{ceiling};
         my @color = map { $_ * 1.5 } @{ $c->{ $flier->{team} } }[ 0 .. 2 ];
-        my @sprite_data = ( blob => [ $x, $y ], [ @color, 0 ], 0, 0.5 );
+        my @sprite_data = ( blob => [ $x, $y, 0 ], [ @color, 0 ], 0, 0.5, 0 );
         push @{ $trail->{segments} }, { brightness => $brightness, created => $tick, sprite => \@sprite_data };
         shift @{ $trail->{segments} } while @{ $trail->{segments} } > $max_trail;
     }
@@ -260,7 +260,7 @@ sub render_world {
             my $screen_top    = $cam_pos->{y} + $h;
             my $screen_right  = $cam_pos->{x} + $w;
 
-            my @markers = ( [ 1, 1, 1, 999999 ], 0, 0.2 );
+            my @markers = ( [ 1, 1, 1, 999999 ], 0, 0.2, 0 );
             my @sprites = (
                 [ bullet => [ 0,             0,              0 ], @markers ],
                 [ bullet => [ $screen_left,  $screen_bottom, 0 ], @markers ],
@@ -324,13 +324,13 @@ sub render_world {
                 if ( $flier->{y} < $game_state->{floor} or $flier->{y} > $game_state->{ceiling} ) {
                     $color[$_] *= 0.5 for 0 .. 2;
                 }
-                push @sprites,
-                  [
-                    $flier->{is_bullet} ? "bullet" : "player1",
-                    [ $flier->{x}, $flier->{y}, ],
+                push @sprites, [
+                    ( $flier->{is_bullet} ? "bullet" : "player1" ),    #
+                    [ $flier->{x}, $flier->{y}, 0 ],
                     \@color,
-                    $flier->{is_bullet} ? ( 0, .3 ) : ( $flier->{rot}, 1.5 )
-                  ];
+                    ( $flier->{is_bullet} ? ( 0, .3 ) : ( $flier->{rot}, 1.5 ) ),
+                    0,
+                ];
 
                 if ( !$flier->{is_bullet} ) {
                     my @wing_color = @{ $c->{ $flier->{team} } };
@@ -338,7 +338,7 @@ sub render_world {
                         $wing_color[$_] *= 0.5 for 0 .. 2;
                     }
                     push @sprites,
-                      [ player1_wings => [ $flier->{x}, $flier->{y}, ], \@wing_color, $flier->{rot}, 1.5, 1 ];
+                      [ player1_wings => [ $flier->{x}, $flier->{y}, 0 ], \@wing_color, $flier->{rot}, 1.5, 1 ];
 
                     my @color = @{ $c->{ $flier->{team} } };
                     $color[3] *= 0.2 if $flier->{y} < $game_state->{floor} or $flier->{y} > $game_state->{ceiling};
@@ -347,7 +347,7 @@ sub render_world {
                       is_turning_right thrust_right_flame
                       is_turning_left  thrust_left_flame
                     );
-                    push @sprites, [ $flames{$_} => [ $flier->{x}, $flier->{y}, ], \@color, $flier->{rot}, 1.5, 1 ]
+                    push @sprites, [ $flames{$_} => [ $flier->{x}, $flier->{y}, 0 ], \@color, $flier->{rot}, 1.5, 1 ]
                       for grep { $flier->{$_} } keys %flames;
                 }
             }
@@ -364,7 +364,7 @@ sub render_world {
             for my $ex ( @{ $client_game_state->{explosions} } ) {
                 my @color = ( @{ $c->{ $ex->{team} } }[ 0 .. 2 ], 0.8 * $ex->{life} );
                 my $scale = $ex->{scale} * $ex->{life};
-                push @sprites, [ bullet => [ $ex->{x}, $ex->{y} ], \@color, 0, $scale ];
+                push @sprites, [ bullet => [ $ex->{x}, $ex->{y}, 0 ], \@color, 0, $scale, 0 ];
             }
 
             push $self->timestamps, [ sprite_prepare_end => time ];
@@ -403,7 +403,7 @@ sub generate_background_tile {
         $hash >>= 3;
         my $color =
           $py > $game_state->{ceiling} ? $c->{2} : $py < $game_state->{floor} ? $c->{3} : $c->{1};
-        push @sprites, [ blob => [ $px, $py, $pz ], $color, 0, $sprite_mult ];
+        push @sprites, [ blob => [ $px, $py, $pz ], $color, 0, $sprite_mult, 0 ];
     }
 
     return \@sprites;

@@ -683,10 +683,6 @@ sub send_sprite_datas {
     my $sprites = $self->sprites;
     for my $sprite ( @datas ) {
         my ( $texture, $location, $color, $rotation, $scale, $r_scale ) = @{$sprite};
-        $location->[2] //= 0;
-        $color ||= [ 1, 1, 1, 1 ];
-        $scale   //= 1;
-        $r_scale //= 0;
         push @{ $sprites->{$texture} }, [ @{$location}, @{$color}, $rotation, $scale, $r_scale ];
     }
     return;
