@@ -682,8 +682,8 @@ sub send_sprite_datas {
     my ( $self, @datas ) = @_;
     my $sprites = $self->sprites;
     for my $sprite ( @datas ) {
-        my ( $texture, @args ) = @{$sprite};
-        push @{ $sprites->{$texture} }, \@args;
+        my ( $texture, $args ) = @{$sprite};
+        push @{ $sprites->{$texture} }, $args;
     }
     return;
 }
