@@ -657,7 +657,7 @@ sub with_sprite_setup_render {
     for my $tex ( @{ $self->sprite_tex_order } ) {
         glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
         glUniform1iARB $uniforms->{texture}, 0;
-        my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, map @{$_}, @{ $sprites->{$tex} } );
+        my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $sprites->{$tex} } );
         glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
 
         my $count = @{ $sprites->{$tex} };
@@ -681,7 +681,7 @@ sub send_sprite_data {
 sub send_sprite_datas {
     my ( $self, @datas ) = @_;
     my $sprites = $self->sprites;
-    push @{ $sprites->{ $_->[0] } }, $_->[1] for @datas;
+    push @{ $sprites->{ $_->[0] } }, @{ $_->[1] } for @datas;
     return;
 }
 
