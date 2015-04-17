@@ -660,7 +660,7 @@ sub with_sprite_setup_render {
         my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $sprites->{$tex} } );
         glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
 
-        my $count = @{ $sprites->{$tex} };
+        my $count = @{ $sprites->{$tex} } / 10;
         glDrawArrays GL_POINTS, 0, $count;
         $self->sprite_count( $self->sprite_count + $count );
     }
