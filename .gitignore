@@ -26,3 +26,5 @@
 /kryonet*
 /IO-Async-*
 /cpanfile.snapshot
+/perl
+/Logfile.CSV
