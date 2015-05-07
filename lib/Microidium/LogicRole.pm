@@ -127,6 +127,7 @@ sub plan_player_respawns {
             team             => 1,
             hp               => 12,
             player_id        => $player->{id},
+            player_name      => $player->{id},
             is_thrusting     => 1,
             is_turning_left  => 0,
             is_turning_right => 0,

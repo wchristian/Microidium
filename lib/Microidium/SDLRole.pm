@@ -292,7 +292,7 @@ sub render {
     $self->render_screen_target;
     push $self->timestamps, [ screen_render_end => time ];
 
-    $self->render_ui( $game_state );
+    $self->render_ui( $game_state, $self->client_game_state );
     push $self->timestamps, [ ui_render_end => time ];
 
     return;

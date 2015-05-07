@@ -427,9 +427,23 @@ sub play_sound {
 }
 
 sub render_ui {
-    my ( $self, $game_state ) = @_;
+    my ( $self, $game_state, $client_game_state ) = @_;
     my $player_actor = $self->local_player_actor;
     my @texts;
+
+    my $cam_pos     = $client_game_state->{camera}{pos};
+    my $half_height = $self->height / 2;
+    my $half_width  = $self->width / 2;
+    my %names       = ( 1 => "Mithaldu", 2 => "burnersk" );
+
+    for my $flier ( grep { !$_->{is_bullet} and $_->{team} == 1 } values %{ $game_state->{actors} } ) {
+        my ( $x, $y ) = map { $flier->{$_} - $cam_pos->{$_} } qw( x y );
+        $y = $half_height + $half_height * $y / $self->display_scale;
+        $x = $half_width + $half_width * $x / $self->display_scale / $self->aspect_ratio;
+        my $name = $flier->{player_name};
+        push @texts, [ [ $x, $y ], $names{$name} || $name ];
+    }
+
     push @texts,
       [ [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" ];
 
