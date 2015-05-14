@@ -1,3 +1,5 @@
+#!/bin/perl
+
 package generate_colors;
 
 use strictures;

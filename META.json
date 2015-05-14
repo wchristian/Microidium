@@ -4,7 +4,7 @@
       "Christian Walde <walde.christian@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 5.031, CPAN::Meta::Converter version 2.143240",
+   "generated_by" : "Dist::Zilla version 5.036, CPAN::Meta::Converter version 2.143240",
    "license" : [
       "unrestricted"
    ],
@@ -85,6 +85,7 @@
             "constant" : "0",
             "curry" : "0",
             "lib" : "0",
+            "local::lib" : "0",
             "perl" : "5.010",
             "strictures" : "0"
          }

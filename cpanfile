@@ -39,6 +39,7 @@ requires "Time::HiRes" => "0";
 requires "constant" => "0";
 requires "curry" => "0";
 requires "lib" => "0";
+requires "local::lib" => "0";
 requires "perl" => "5.010";
 requires "strictures" => "0";
 
