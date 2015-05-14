@@ -84,6 +84,7 @@
             "Time::HiRes" : "0",
             "constant" : "0",
             "curry" : "0",
+            "experimental" : "0",
             "lib" : "0",
             "local::lib" : "0",
             "perl" : "5.010",

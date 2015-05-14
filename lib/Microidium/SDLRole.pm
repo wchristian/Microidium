@@ -28,6 +28,8 @@ use Microidium::Helpers 'dfile';
 
 use Moo::Role;
 
+use experimental 'autoderef';
+
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
 has display_scale   => ( is => 'rw', default => sub { 600 } );

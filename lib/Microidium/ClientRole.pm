@@ -19,6 +19,8 @@ use SDL::RWOps;
 
 use Moo::Role;
 
+use experimental 'autoderef';
+
 requires "update_game_state";
 
 has sounds => (
