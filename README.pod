@@ -16,6 +16,22 @@ This has a number of dependencies that should all be available from CPAN. Run
 C<perl Makefile.PL> to get a list of dependencies that you still need to
 install.
 
+=head1 INSTALLATION
+
+It might be necessary to download Nvidia Inspector, use the Profile Settings,
+find the perl process, and set "Enable application for Optimus" to
+SHIM_RENDERING_MODE_USER_EDITABLE.
+
+Running this and using the new hardlink can also help to result in usage of the
+correct GPU:
+
+    mklink /H gpu-chrome.exe chrome.exe
+
+To install the dependency L<Acme::MITHALDU::BleedingOpenGL> on Apple machines
+you might need to step in manually and run Makefile.PL with this parameter:
+
+    perl Makefile.PL interface=FREEGLUT
+
 =head1 THANKS
 
 Thanks go to these people, in no particular order, for their respective
