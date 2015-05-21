@@ -80,7 +80,8 @@ BEGIN {
       GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
       GL_TEXTURE_WRAP_S  GL_TEXTURE_WRAP_T GL_RGBA GL_DEPTH_COMPONENT
       GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
-      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW
+      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW GL_VERSION
+      GL_RENDERER
     );
 
     for my $name ( keys %gl_constants ) {
@@ -113,6 +114,13 @@ sub _build_app {
         resizeable     => 1,
         min_t          => 1 / 62,
     );
+
+    say glGetString GL_RENDERER;
+    my $version = glGetString GL_VERSION;
+    $version =~ s/ .*//;
+    $version = version->parse( $version );
+    die "Your OpenGL version is $version. You must have at least OpenGL 3.3 to run this tutorial.\n"
+      if $version < 3.003;
 
     $self->init_sprites;
     $self->init_text_2D( dfile "courier.tga" );
