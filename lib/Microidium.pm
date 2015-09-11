@@ -82,6 +82,8 @@ Sounds made with http://www.bfxr.net/
 
 Font texture made with http://www.codehead.co.uk/cbfg/
 
+To be inspected for inspiration: http://www.xpilot.org/development/
+
 =cut
 
 use Moo;
