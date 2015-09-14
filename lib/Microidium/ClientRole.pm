@@ -483,7 +483,8 @@ sub render_ui {
             sqrt( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )
           ];
     }
-    push @texts, [ [ 0, 20 ], sprintf "FPS: %5.1f", 1 / $self->frame_time ];
+    push @texts,
+      [ [ 0, 20 ], sprintf "FPS: %5.1f // Load: % 7.2f %%", 1 / $self->frame_time, 100 * $self->frame_calc_time * $self->fps_aim ];
     my $tick = $game_state->{tick} || 0;
     push @texts,
       [ [ 0, 10 ], sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ) ];

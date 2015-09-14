@@ -43,6 +43,8 @@ has frame           => ( is => 'rw', default => sub { 0 } );
 has fps             => ( is => 'rw', default => sub { 0 } );
 has frame_time      => ( is => 'rw', default => sub { 0 } );
 has last_frame_time => ( is => 'rw', default => sub { time } );
+has frame_calc_time => ( is => 'rw', default => sub { 0 } );
+has fps_aim         => ( is => 'rw', default => sub { 62 } );
 
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
@@ -112,7 +114,7 @@ sub _build_app {
         width          => $self->width,
         height         => $self->height,
         resizeable     => 1,
-        min_t          => 1 / 62,
+        min_t          => 1 / $self->fps_aim,
     );
 
     say glGetString GL_RENDERER;
@@ -225,7 +227,9 @@ sub on_show {
     $self->render_timings;
 
     SDL::Video::GL_swap_buffers;
-    push $self->timestamps, [ sync_end => time ];
+    my $end = time;
+    push $self->timestamps, [ sync_end => $end ];
+    $self->smooth_update( frame_calc_time => $end - $now, 0.02 );
 
     return;
 }
@@ -309,10 +313,10 @@ sub render {
 }
 
 sub smooth_update {
-    my ( $self, $attrib, $new ) = @_;
+    my ( $self, $attrib, $new, $factor ) = @_;
     my $old  = $self->$attrib;
     my $diff = $new - $old;
-    $self->$attrib( $old + $diff * .08 );
+    $self->$attrib( $old + $diff * ( $factor || .08 ) );
     return;
 }
 
