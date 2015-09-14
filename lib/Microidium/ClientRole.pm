@@ -474,20 +474,26 @@ sub render_ui {
         sprintf( "Audio channels:|%s|", join "", map { SDL::Mixer::Channels::playing( $_ ) ? 'x' : ' ' } 0 .. 31 )
       ];
     if ( $player_actor ) {
-        push @texts, [ [ 0, 40 ], "HP: $player_actor->{hp}" ];
-        push @texts,
+        push @texts,    #
+          [ [ 0, 40 ], "HP: $player_actor->{hp}" ],
           [
             [ 0, 30 ],
-            sprintf "X: % 8.2f / Y: % 8.2f / R: % 8.2f / Speed: % 8.2f",
-            ( map $player_actor->{$_}, qw( x y rot ) ),
-            sqrt( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )
+            sprintf(
+                "X: % 8.2f / Y: % 8.2f / R: % 8.2f / Speed: % 8.2f",
+                ( map $player_actor->{$_}, qw( x y rot ) ),
+                sqrt( $player_actor->{x_speed}**2 + $player_actor->{y_speed}**2 )
+            ),
+            "no_cache",
           ];
     }
     push @texts,
       [ [ 0, 20 ], sprintf "FPS: %5.1f // Load: % 7.2f %%", 1 / $self->frame_time, 100 * $self->frame_calc_time * $self->fps_aim ];
     my $tick = $game_state->{tick} || 0;
-    push @texts,
-      [ [ 0, 10 ], sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ) ];
+    push @texts, [
+        [ 0, 10 ],
+        sprintf( "Frame: %d / Tick: %d / Dropped: %d", $self->frame, $tick, $tick - $self->frame ),    #
+        "no_cache",
+    ];
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
