@@ -56,6 +56,7 @@ has sprites          => ( is => 'rw', default => sub { {} } );
 has sprite_count     => ( is => 'rw', default => sub { 0 } );
 has sprite_tex_order => ( is => 'rw', default => sub { [] } );
 has fbos             => ( is => 'rw', default => sub { {} } );
+has text_vert_cache  => ( is => 'rw', default => sub { {} } );
 
 has timings_max         => ( is => 'rw', default => sub { 18 } );
 has timings_max_frames  => ( is => 'rw', default => sub { 180 } );
@@ -745,6 +746,8 @@ sub print_text_2D {
     glEnable GL_BLEND;
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
+    my $text_verts = $self->text_vert_cache;
+
     for my $text ( @texts ) {
         my ( $x, $y, $size, $color ) = @{ $text->[0] };
 
@@ -755,17 +758,18 @@ sub print_text_2D {
         $color->[3] //= 1.0;
 
         my $size_x = $size / 2;
-        my @chars = split //, $text->[1];
 
-        my @vertices = map { $x + $_ * $size_x, $y, ord $chars[$_] } 0 .. $#chars;
+        my $vert_ogl = $text_verts->{"$text->[1] $x $y $size"} ||= do {
+            my @chars = split //, $text->[1];
+            my @vertices = map { $x + $_ * $size_x, $y, ord $chars[$_] } 0 .. $#chars;
+            OpenGL::Array->new_list( GL_FLOAT, @vertices );
+        };
 
         glUniform2fARB $uniforms->{size}, 2 * $size_x, 2 * $size;
         glUniform4fARB $uniforms->{color}, @{$color};
-
-        my $vert_ogl = OpenGL::Array->new_list( GL_FLOAT, @vertices );
         glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STREAM_DRAW;
 
-        glDrawArrays GL_POINTS, 0, scalar @chars;
+        glDrawArrays GL_POINTS, 0, length $text->[1];
     }
 
     glDisable GL_BLEND;
