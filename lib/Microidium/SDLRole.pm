@@ -759,11 +759,13 @@ sub print_text_2D {
 
         my $size_x = $size / 2;
 
-        my $vert_ogl = $text_verts->{"$text->[1] $x $y $size"} ||= do {
+        my $key = "$text->[1] $x $y $size";
+        my $vert_ogl = $text_verts->{$key} || do {
             my @chars = split //, $text->[1];
             my @vertices = map { $x + $_ * $size_x, $y, ord $chars[$_] } 0 .. $#chars;
             OpenGL::Array->new_list( GL_FLOAT, @vertices );
         };
+        $text_verts->{$key} = $vert_ogl if !$text->[2];
 
         glUniform2fARB $uniforms->{size}, 2 * $size_x, 2 * $size;
         glUniform4fARB $uniforms->{color}, @{$color};
