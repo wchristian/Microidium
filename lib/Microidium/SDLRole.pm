@@ -227,7 +227,7 @@ sub on_show {
     $self->frame( $self->frame + 1 );
 
     $self->render;
-    $self->render_timings;
+    $self->render_timings if !$self->client_state->{skip_timings};
 
     SDL::Video::GL_swap_buffers;
     my $end = time;
@@ -528,6 +528,7 @@ sub _build_timing_types {
       event_end__frame_start
       move_start__move_end
       move_end__move_start
+      move_end__event_start
       move_end__frame_start
       frame_start__integrate_end
       frame_start__sprite_prepare_end
@@ -537,7 +538,10 @@ sub _build_timing_types {
       sprite_render_end__world_render_end
       world_render_end__postprocess_render_end
       postprocess_render_end__screen_render_end
+      event_end__ui_render_end
       screen_render_end__ui_render_end
+      screen_render_end__event_start
+      ui_render_end__sync_end
       ui_render_end__timings_render_start
       timings_render_start__timings_render_end
       timings_render_end__sync_end

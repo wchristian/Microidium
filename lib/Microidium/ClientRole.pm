@@ -6,7 +6,7 @@ use strictures;
 
 use lib '..';
 use 5.010;
-use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l );
+use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l t );
 use List::Util qw( min max );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
@@ -134,6 +134,7 @@ sub on_keydown {
     $self->client_state->{fire}       = 1 if $sym == SDLK_d;
     $self->change_fov( $self->fov - 10 ) if $sym == SDLK_o;
     $self->change_fov( $self->fov + 10 ) if $sym == SDLK_l;
+    $self->client_state->{skip_timings} = !$self->client_state->{skip_timings} if $sym == SDLK_t;
 
     if ( $self->in_network_game ) {
         $self->log( "sent: DOWN $sym" );
@@ -445,7 +446,8 @@ sub render_ui {
     }
 
     push @texts,
-      [ [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" ];
+      [ [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" ],
+      [ [ 0, $self->height - 22 ], "          Disable time graph: t" ];
 
     push @texts, [ [ 0, 90 ], "Perl v$]" ];
 
@@ -489,13 +491,10 @@ sub render_ui {
             "no_cache",
           ];
     }
-    push @texts,
-      [
-        [ 0, 20 ],
-        sprintf "FPS: %5.1f // Load: % 7.2f %%",
-        1 / $self->frame_time,
+    push @texts, [
+        [ 0, 20 ], sprintf "FPS: %5.1f // Load: % 7.2f %%", 1 / $self->frame_time,    #
         100 * $self->frame_calc_time * $self->fps_aim
-      ];
+    ];
     my $tick = $game_state->{tick} || 0;
     push @texts, [
         [ 0, 10 ],
@@ -505,7 +504,7 @@ sub render_ui {
 
     my $con = $self->console;
     my @to_display = grep defined, @{$con}[ max( 0, $#$con - 10 ) .. $#$con ];
-    push @texts, [ [ 0, $self->height - 22 - $_ * 10 ], $to_display[$_] ] for 0 .. $#to_display;
+    push @texts, [ [ 0, $self->height - 32 - $_ * 10 ], $to_display[$_] ] for 0 .. $#to_display;
 
     my %timing_types  = %{ $self->timing_types };
     my @timing_colors = $self->timing_colors;
