@@ -6,7 +6,7 @@ use strictures;
 
 use lib '..';
 use 5.010;
-use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l t );
+use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l t c );
 use List::Util qw( min max );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
@@ -136,6 +136,12 @@ sub on_keydown {
     $self->change_fov( $self->fov + 10 ) if $sym == SDLK_l;
     $self->client_state->{skip_timings} = !$self->client_state->{skip_timings} if $sym == SDLK_t;
 
+    if ( $sym == SDLK_c ) {
+        use SDL::Mouse;
+        my $state = $self->client_state->{show_cursor} = !$self->client_state->{show_cursor};
+        SDL::Mouse::show_cursor( $state );
+    }
+
     if ( $self->in_network_game ) {
         $self->log( "sent: DOWN $sym" );
         $self->pryo->send_tcp( bless $self->client_state, "Microidium::Clientstate" );
@@ -155,6 +161,12 @@ sub on_keyup {
         $self->log( "sent: UP $sym" );
         $self->pryo->send_tcp( $self->client_state );
     }
+    return;
+}
+
+sub on_mousemotion {
+    my ( $self, $event ) = @_;
+    $self->client_state->{$_} = $event->$_ for qw( motion_x motion_y );
     return;
 }
 
@@ -447,7 +459,10 @@ sub render_ui {
 
     push @texts,
       [ [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" ],
-      [ [ 0, $self->height - 22 ], "          Disable time graph: t" ];
+      [ [ 0, $self->height - 22 ], "          Disable time graph: t - Disable mouse cursor: c" ];
+
+    push @texts, [ [ 0, 100 ], sprintf "Mouse: %s %s", map $self->client_state->{$_}, qw( motion_x motion_y ) ];
+    push @texts, [ [ $self->client_state->{motion_x} - 4, $self->height - $self->client_state->{motion_y} - 8 ], "+" ];
 
     push @texts, [ [ 0, 90 ], "Perl v$]" ];
 
