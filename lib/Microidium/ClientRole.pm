@@ -6,7 +6,7 @@ use strictures;
 
 use lib '..';
 use 5.010;
-use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l t c );
+use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l t c p );
 use List::Util qw( min max );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
@@ -16,6 +16,7 @@ use Time::HiRes 'time';
 use POSIX 'floor';
 use IO::All -binary;
 use SDL::RWOps;
+use Scalar::Util 'refaddr';
 
 use Moo::Role;
 
@@ -135,6 +136,7 @@ sub on_keydown {
     $self->change_fov( $self->fov - 10 ) if $sym == SDLK_o;
     $self->change_fov( $self->fov + 10 ) if $sym == SDLK_l;
     $self->client_state->{skip_timings} = !$self->client_state->{skip_timings} if $sym == SDLK_t;
+    $self->client_state->{pump_extra}   = !$self->client_state->{pump_extra}   if $sym == SDLK_p;
 
     if ( $sym == SDLK_c ) {
         use SDL::Mouse;
@@ -459,8 +461,13 @@ sub render_ui {
 
     push @texts,
       [ [ 0, $self->height - 12 ], "Controls: left up right d - Quit: q - Connect to server: n - Zoom in/out: o l" ],
-      [ [ 0, $self->height - 22 ], "          Disable time graph: t - Disable mouse cursor: c" ];
+      [
+        [ 0, $self->height - 22 ],
+        "          Disable time graph: t - Disable mouse cursor: c - Pump+: p "
+          . ( $self->client_state->{pump_extra} ? "|" : "/" )
+      ];
 
+    $self->app->_event( refaddr $self->app ) if $self->client_state->{pump_extra};
     push @texts, [ [ 0, 100 ], sprintf "Mouse: %s %s", map $self->client_state->{$_}, qw( motion_x motion_y ) ];
     push @texts, [ [ $self->client_state->{motion_x} - 4, $self->height - $self->client_state->{motion_y} - 8 ], "+" ];
 
