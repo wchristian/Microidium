@@ -28,8 +28,6 @@ use Microidium::Helpers 'dfile';
 
 use Moo::Role;
 
-use experimental 'autoderef';
-
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
 has display_scale   => ( is => 'rw', default => sub { 600 } );
@@ -147,13 +145,13 @@ sub _build_event_handlers {
 
 sub on_event {
     my ( $self, $event ) = @_;
-    push $self->timestamps, [ event_start => time ];
+    push @{ $self->timestamps }, [ event_start => time ];
     my $type     = $event->type;
     my $handlers = $self->event_handlers;
     die "unknown event type: $type" if !exists $handlers->{$type};
     my $meth = $handlers->{$type};
     $self->$meth( $event ) if $meth;
-    push $self->timestamps, [ event_end => time ];
+    push @{ $self->timestamps }, [ event_end => time ];
     return;
 }
 
@@ -206,12 +204,12 @@ sub historize {
 
 sub on_move {
     my ( $self ) = @_;
-    push $self->timestamps, [ move_start => time ];
+    push @{ $self->timestamps }, [ move_start => time ];
     $self->finalize_frame_timings;
     my $new_game_state = clone $self->game_state;
     $self->update_game_state( $new_game_state, $self->client_state );
     $self->historize( $new_game_state, "game_state" );
-    push $self->timestamps, [ move_end => time ];
+    push @{ $self->timestamps }, [ move_end => time ];
     return;
 }
 
@@ -219,7 +217,7 @@ sub on_show {
     my ( $self ) = @_;
 
     my $now = time;
-    push $self->timestamps, [ frame_start => $now ];
+    push @{ $self->timestamps }, [ frame_start => $now ];
     $self->smooth_update( frame_time => $now - $self->last_frame_time );
     $self->last_frame_time( $now );
     $self->frame( $self->frame + 1 );
@@ -229,7 +227,7 @@ sub on_show {
 
     SDL::Video::GL_swap_buffers;
     my $end = time;
-    push $self->timestamps, [ sync_end => $end ];
+    push @{ $self->timestamps }, [ sync_end => $end ];
     $self->smooth_update( frame_calc_time => $end - $now, 0.02 );
 
     return;
@@ -291,24 +289,24 @@ sub render {
     glClearColor 0.3, 0, 0, 1;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_world( $game_state, $self->client_game_state );
-    push $self->timestamps, [ world_render_end => time ];
+    push @{ $self->timestamps }, [ world_render_end => time ];
 
     glBindFramebufferEXT GL_DRAW_FRAMEBUFFER, $self->fbos->{screen_target};
     glViewport( 0, 0, $self->fb_height * $self->aspect_ratio, $self->fb_height );
     glClearColor 0.0, 0, 0, 0;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_post_process;
-    push $self->timestamps, [ postprocess_render_end => time ];
+    push @{ $self->timestamps }, [ postprocess_render_end => time ];
 
     glBindFramebufferEXT GL_FRAMEBUFFER, 0;    # screen
     glViewport( 0, 0, $self->width, $self->height );
     glClearColor 0, 0, 0, 0;
     glClear GL_COLOR_BUFFER_BIT;
     $self->render_screen_target;
-    push $self->timestamps, [ screen_render_end => time ];
+    push @{ $self->timestamps }, [ screen_render_end => time ];
 
     $self->render_ui( $game_state, $self->client_game_state );
-    push $self->timestamps, [ ui_render_end => time ];
+    push @{ $self->timestamps }, [ ui_render_end => time ];
 
     return;
 }
@@ -552,7 +550,7 @@ sub _build_timing_types {
 sub render_timings {
     my ( $self ) = @_;
 
-    push $self->timestamps, [ timings_render_start => time ];
+    push @{ $self->timestamps }, [ timings_render_start => time ];
     my @time_stamps  = @{ $self->previous_timestamps };
     my %timing_types = %{ $self->timing_types };
     my $elapse_limit = 0.0001;
@@ -592,7 +590,7 @@ sub render_timings {
     }
 
     my $pointer = $self->timings->{pointer};
-    splice $self->timings->{list}, ( $pointer * ( 1 + ( 2 * $self->timings_max ) ) + 1 ), 2 * $self->timings_max,
+    splice @{ $self->timings->{list} }, ( $pointer * ( 1 + ( 2 * $self->timings_max ) ) + 1 ), 2 * $self->timings_max,
       @current_timings;
 
     glUseProgramObjectARB $self->shaders->{timings};
@@ -615,7 +613,7 @@ sub render_timings {
 
     glBindVertexArray 0;
 
-    push $self->timestamps, [ timings_render_end => time ];
+    push @{ $self->timestamps }, [ timings_render_end => time ];
 
     return;
 }

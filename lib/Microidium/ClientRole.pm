@@ -19,8 +19,6 @@ use SDL::RWOps;
 
 use Moo::Role;
 
-use experimental 'autoderef';
-
 requires "update_game_state";
 
 has sounds => (
@@ -369,12 +367,12 @@ sub render_world {
                 push @sprites, [ bullet => [ $ex->{x}, $ex->{y}, 0 => @color => 0, $scale, 0 ] ];
             }
 
-            push $self->timestamps, [ sprite_prepare_end => time ];
+            push @{ $self->timestamps }, [ sprite_prepare_end => time ];
             $self->send_sprite_datas( @sprites );
-            push $self->timestamps, [ sprite_send_end => time ];
+            push @{ $self->timestamps }, [ sprite_send_end => time ];
         }
     );
-    push $self->timestamps, [ sprite_render_end => time ];
+    push @{ $self->timestamps }, [ sprite_render_end => time ];
 
     my $player_actor = $self->local_player_actor;
     my $audio_pickup = $player_actor ? $player_actor : $cam_pos;
