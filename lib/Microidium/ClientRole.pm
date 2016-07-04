@@ -7,7 +7,7 @@ use strictures;
 use lib '..';
 use 5.010;
 use SDL::Constants map "SDLK_$_", qw( q UP LEFT RIGHT d n o l t c p );
-use List::Util qw( min max );
+use List::Util qw( min max sum );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
 use PryoNet::Client;
@@ -43,6 +43,8 @@ has music_is_playing  => ( is => 'rw' );
 has tile_cache        => ( is => 'ro', default => sub { {} } );
 has client_game_state => ( is => 'rw', lazy => 1, builder => 1 );
 has client_game_state_history => ( is => 'rw', default => sub { [] } );
+
+my $cursors = 0;
 
 1;
 
@@ -467,9 +469,10 @@ sub render_ui {
           . ( $self->client_state->{pump_extra} ? "|" : "/" )
       ];
 
-    $self->app->_event( refaddr $self->app ) if $self->client_state->{pump_extra};
-    push @texts, [ [ 0, 100 ], sprintf "Mouse: %s %s", map $self->client_state->{$_}, qw( motion_x motion_y ) ];
-    push @texts, [ [ $self->client_state->{motion_x} - 4, $self->height - $self->client_state->{motion_y} - 8 ], "+" ];
+    push @texts, $self->_mouse_texts( 1 );
+    push @texts, $self->_mouse_texts;
+
+    push @texts, [ [ 0, 100 ], "       distance to last pos | time since last post" ];
 
     push @texts, [ [ 0, 90 ], "Perl v$]" ];
 
@@ -542,6 +545,33 @@ sub render_ui {
     $self->print_text_2D( @texts );
 
     return;
+}
+
+sub render_mouse {
+    my ( $self, $game_state, $client_game_state, $i ) = @_;
+    $self->print_text_2D( $self->_mouse_texts );
+    return;
+}
+
+sub _mouse_texts {
+    my ( $self, $first ) = @_;
+    $first ? ( $cursors = 0 ) : ( $cursors++ );
+    my @texts;
+    my @cols = ( [ 1, 1, 1 ], [ 1, 0, 0 ], [ 0, 1, 0 ], [ .8, 0, .8 ] );
+
+    my ( $old_x, $old_y ) = map $self->client_state->{$_}, qw( motion_x motion_y );
+    $self->app->_event( refaddr $self->app ) if $self->client_state->{pump_extra} and $cursors;
+    my ( $new_x, $new_y ) = map $self->client_state->{$_}, qw( motion_x motion_y );
+    my $max_dist = 44;
+    my $dist = sqrt( ( $new_x - $old_x )**2 + ( $new_y - $old_y )**2 );
+    $dist = $max_dist if $dist > $max_dist;
+    push @texts, [ [ 0, 110 + $cursors * 10 ], "Mouse:" ];
+    my $time_since_last_mouse = 2 * 1000 * ( time - $self->last_end_time );
+    push @texts,
+      [ [ 50, 110 + $cursors * 10, 7.9 ], sprintf "%${max_dist}s|%s", "-" x $dist, "-" x $time_since_last_mouse ];
+    push @texts, [ [ $new_x - 4, $self->height - $new_y - 8, undef, $cols[$cursors] ], "+" ];
+
+    return @texts;
 }
 
 # see bin/generate_colors

@@ -63,8 +63,9 @@ has frame           => ( is => 'rw', default => sub { 0 } );
 has fps             => ( is => 'rw', default => sub { 0 } );
 has frame_time      => ( is => 'rw', default => sub { 0 } );
 has last_frame_time => ( is => 'rw', default => sub { time } );
+has last_end_time   => ( is => 'rw', default => sub { time } );
 has frame_calc_time => ( is => 'rw', default => sub { 0 } );
-has fps_aim         => ( is => 'rw', default => sub { 62 } );
+has fps_aim         => ( is => 'rw', default => sub { 72 } );
 
 has $_ => ( is => 'rw', builder => 1 ) for qw( event_handlers game_state client_state );
 
@@ -229,8 +230,14 @@ sub on_show {
     $self->render;
     $self->render_timings if !$self->client_state->{skip_timings};
 
+    my $count = @{ $self->timestamps };
+    $self->render_mouse( $self->game_state, $self->client_game_state );
+    my $extra = @{ $self->timestamps } - $count;
+    pop @{ $self->timestamps } for 1 .. $extra;
+    push @{ $self->timestamps }, [ sync_start => time ];
     SDL::Video::GL_swap_buffers;
     my $end = time;
+    $self->last_end_time( $end );
     push @{ $self->timestamps }, [ sync_end => $end ];
     $self->smooth_update( frame_calc_time => $end - $now, 0.02 );
 
@@ -545,6 +552,8 @@ sub _build_timing_types {
       ui_render_end__timings_render_start
       timings_render_start__timings_render_end
       timings_render_end__sync_end
+      timings_render_end__sync_start
+      sync_start__sync_end
       event_start__event_end
       event_end__event_start
       sync_end__event_start
