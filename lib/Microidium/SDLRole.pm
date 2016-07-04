@@ -39,6 +39,7 @@ BEGIN {
       GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
       GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW GL_VERSION
       GL_RENDERER GL_MAX_TEXTURE_SIZE GL_MAX_ARRAY_TEXTURE_LAYERS
+      GL_TEXTURE_2D_ARRAY
     );
 
     for my $name ( keys %gl_constants ) {
@@ -429,7 +430,7 @@ sub init_sprites {
 
     $self->sprite_tex_order(
         [qw( blob thrust_flame thrust_right_flame thrust_left_flame player1_wings player1 bullet )] );
-    $self->textures->{$_} = $self->load_texture( dfile "$_.tga" ) for @{ $self->sprite_tex_order };
+    $self->textures->{$_} = $self->load_texture_array( dfile "$_.tga" ) for @{ $self->sprite_tex_order };
 
     glBindVertexArray $self->vaos->{sprite};
 
@@ -671,7 +672,7 @@ sub with_sprite_setup_render {
 
     my $sprites = $self->sprites;
     for my $tex ( @{ $self->sprite_tex_order } ) {
-        glBindTexture GL_TEXTURE_2D, $self->textures->{$tex};
+        glBindTexture GL_TEXTURE_2D_ARRAY, $self->textures->{$tex};
         glUniform1iARB $uniforms->{texture}, 0;
         my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $sprites->{$tex} } );
         glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
@@ -782,12 +783,20 @@ sub print_text_2D {
     return;
 }
 
-sub load_texture {
+sub load_image {
     my ( $self, $path ) = @_;
 
     my $img = OpenGL::Image->new( engine => 'Targa', source => $path );
     my ( $ifmt, $fmt, $type ) = $img->Get( 'gl_internalformat', 'gl_format', 'gl_type' );
     my ( $w, $h ) = $img->Get( 'width', 'height' );
+
+    return ( $img, $ifmt, $fmt, $type, $w, $h );
+}
+
+sub load_texture {
+    my ( $self, $path ) = @_;
+
+    my ( $img, $ifmt, $fmt, $type, $w, $h ) = $self->load_image( $path );
     my $border  = 0;
     my $mip_lod = 0;
 
@@ -797,6 +806,36 @@ sub load_texture {
     glTexImage2D_c GL_TEXTURE_2D, $mip_lod, $ifmt, $w, $h, $border, $fmt, $type, $img->Ptr;
     glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST;
     glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST;
+
+    return wantarray ? ( $tex, $w, $h ) : $tex;
+}
+
+sub load_texture_array {
+    my ( $self, $path ) = @_;
+
+    my ( $img, $ifmt, $fmt, $type, $w, $h ) = $self->load_image( $path );
+    my $border             = 0;
+    my $mip_lod            = 0;
+    my $total_layer_count  = 3;
+    my $target_x           = 0;
+    my $target_y           = 0;
+    my $target_layer       = 0;
+    my $target_layer_count = 1;
+
+    my $tex = glGenTextures_p 1;
+    glActiveTextureARB GL_TEXTURE0;
+
+    glBindTexture GL_TEXTURE_2D_ARRAY, $tex;
+
+    # allocate buffer with null pointer
+    glTexImage3D_c GL_TEXTURE_2D_ARRAY, $mip_lod, $ifmt, $w, $h, $total_layer_count, $border, $fmt, $type, 0;
+
+    # write tex to buffer
+    glTexSubImage3D_c GL_TEXTURE_2D_ARRAY, $mip_lod, $target_x, $target_y, $target_layer, $w, $h, $target_layer_count,
+      $fmt, $type, $img->Ptr;
+
+    glTexParameteri GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST;
+    glTexParameteri GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST;
 
     return wantarray ? ( $tex, $w, $h ) : $tex;
 }
