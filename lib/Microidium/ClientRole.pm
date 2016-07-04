@@ -485,7 +485,12 @@ sub render_ui {
           ];
     }
     push @texts,
-      [ [ 0, 20 ], sprintf "FPS: %5.1f // Load: % 7.2f %%", 1 / $self->frame_time, 100 * $self->frame_calc_time * $self->fps_aim ];
+      [
+        [ 0, 20 ],
+        sprintf "FPS: %5.1f // Load: % 7.2f %%",
+        1 / $self->frame_time,
+        100 * $self->frame_calc_time * $self->fps_aim
+      ];
     my $tick = $game_state->{tick} || 0;
     push @texts, [
         [ 0, 10 ],
