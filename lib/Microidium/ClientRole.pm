@@ -464,7 +464,12 @@ sub render_ui {
         $self->fb_height, $self->aspect_ratio * $self->fb_height * $self->fb_height / 1_000_000
       ];
 
-    push @texts, [ [ 0, 60 ], sprintf "Sprites: %d", $self->sprite_count ];
+    push @texts,
+      [
+        [ 0, 60 ],
+        sprintf "Sprites: %6d | MaxTexSize: %5d | MaxTexLayers: %4d",
+        $self->sprite_count, $self->max_tex_size, $self->max_tex_layers
+      ];
 
     push @texts,
       [

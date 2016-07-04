@@ -38,7 +38,7 @@ BEGIN {
       GL_TEXTURE_WRAP_S  GL_TEXTURE_WRAP_T GL_RGBA GL_DEPTH_COMPONENT
       GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
       GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW GL_VERSION
-      GL_RENDERER
+      GL_RENDERER GL_MAX_TEXTURE_SIZE GL_MAX_ARRAY_TEXTURE_LAYERS
     );
 
     for my $name ( keys %gl_constants ) {
@@ -84,6 +84,9 @@ has previous_timestamps => ( is => 'rw', default => sub { [] } );
 has timestamps          => ( is => 'rw', default => sub { [] } );
 has used_timing_types   => ( is => 'rw', default => sub { {} } );
 has timing_types        => ( is => 'lazy' );
+
+has max_tex_size   => is => 'lazy', default => sub { glGetIntegerv_p GL_MAX_TEXTURE_SIZE };
+has max_tex_layers => is => 'lazy', default => sub { glGetIntegerv_p GL_MAX_ARRAY_TEXTURE_LAYERS };
 
 sub _build_timings {
     my ( $self ) = @_;
