@@ -28,6 +28,27 @@ use Microidium::Helpers 'dfile';
 
 use Moo::Role;
 
+BEGIN {
+    my %gl_constants = map { $_ => 1 } qw(
+      GL_TEXTURE_2D GL_FLOAT GL_FALSE GL_TRIANGLES GL_COLOR_BUFFER_BIT
+      GL_TEXTURE0 GL_ARRAY_BUFFER GL_BLEND GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
+      GL_STATIC_DRAW GL_TEXTURE_MIN_FILTER GL_ONE GL_CLAMP GL_LINEAR
+      GL_TEXTURE_MAG_FILTER GL_NEAREST GL_VERTEX_SHADER GL_FRAGMENT_SHADER
+      GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
+      GL_TEXTURE_WRAP_S  GL_TEXTURE_WRAP_T GL_RGBA GL_DEPTH_COMPONENT
+      GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
+      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW GL_VERSION
+      GL_RENDERER
+    );
+
+    for my $name ( keys %gl_constants ) {
+        my $val = eval "Acme::MITHALDU::BleedingOpenGL::$name()";
+        die $@ if $@;
+        eval "sub $name () { $val }";
+        die $@ if $@;
+    }
+}
+
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
 
 has display_scale   => ( is => 'rw', default => sub { 600 } );
@@ -70,27 +91,6 @@ sub _build_timings {
         list => [ map { $_, ( 0, 0 ) x $self->timings_max } 0 .. $self->timings_max_frames - 1 ],
         pointer => 0,
     };
-}
-
-BEGIN {
-    my %gl_constants = map { $_ => 1 } qw(
-      GL_TEXTURE_2D GL_FLOAT GL_FALSE GL_TRIANGLES GL_COLOR_BUFFER_BIT
-      GL_TEXTURE0 GL_ARRAY_BUFFER GL_BLEND GL_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-      GL_STATIC_DRAW GL_TEXTURE_MIN_FILTER GL_ONE GL_CLAMP GL_LINEAR
-      GL_TEXTURE_MAG_FILTER GL_NEAREST GL_VERTEX_SHADER GL_FRAGMENT_SHADER
-      GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
-      GL_TEXTURE_WRAP_S  GL_TEXTURE_WRAP_T GL_RGBA GL_DEPTH_COMPONENT
-      GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
-      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW GL_VERSION
-      GL_RENDERER
-    );
-
-    for my $name ( keys %gl_constants ) {
-        my $val = eval "Acme::MITHALDU::BleedingOpenGL::$name()";
-        die $@ if $@;
-        eval "sub $name () { $val }";
-        die $@ if $@;
-    }
 }
 
 1;
