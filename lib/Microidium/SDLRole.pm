@@ -788,11 +788,13 @@ sub load_texture {
     my $img = OpenGL::Image->new( engine => 'Targa', source => $path );
     my ( $ifmt, $fmt, $type ) = $img->Get( 'gl_internalformat', 'gl_format', 'gl_type' );
     my ( $w, $h ) = $img->Get( 'width', 'height' );
+    my $border  = 0;
+    my $mip_lod = 0;
 
     my $tex = glGenTextures_p 1;
     glActiveTextureARB GL_TEXTURE0;
     glBindTexture GL_TEXTURE_2D, $tex;
-    glTexImage2D_c GL_TEXTURE_2D, 0, $ifmt, $w, $h, 0, $fmt, $type, $img->Ptr;
+    glTexImage2D_c GL_TEXTURE_2D, $mip_lod, $ifmt, $w, $h, $border, $fmt, $type, $img->Ptr;
     glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST;
     glTexParameteri GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST;
 
