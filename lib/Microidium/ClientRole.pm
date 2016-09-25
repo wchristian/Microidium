@@ -11,7 +11,7 @@ use List::Util qw( min max sum );
 use Carp::Always;
 use Microidium::Helpers 'dfile';
 use PryoNet::Client;
-use Acme::MITHALDU::XSGrabBag 'mix';
+use Hello::World 'mix';
 use Time::HiRes 'time';
 use POSIX 'floor';
 use IO::All -binary;
@@ -257,7 +257,7 @@ sub render_world {
     if ( !$self->music_is_playing ) {
         my $data  = io( dfile 'vecinec22.ogg' )->all;
         my $music = SDL::Mixer::Music::load_MUS_RW( SDL::RWOps->new_const_mem( $data ) );
-        SDL::Mixer::Music::volume_music( 30 );
+        SDL::Mixer::Music::volume_music( 0 );
         die "music playback error" if SDL::Mixer::Music::play_music( $music, -1 ) == -1;
         $self->music_is_playing( 1 );
     }
@@ -319,16 +319,16 @@ sub render_world {
 
             my $tile_cache = $self->tile_cache;
 
-            for my $y_tile ( ( $bottom_start / $tile_size ) .. ( $top_end / $tile_size ) ) {
-                for my $x_tile ( ( $left_start / $tile_size ) .. ( $right_end / $tile_size ) ) {
-                    push @sprites,
-                      @{
-                        $tile_cache->{"$y_tile:$x_tile"} ||=
-                          $self->generate_background_tile( $y_tile, $x_tile, $tile_size, $STAR_SEED, $max_bg_depth,
-                            $game_state, $c, $sprite_mult )
-                      };
-                }
-            }
+            #for my $y_tile ( ( $bottom_start / $tile_size ) .. ( $top_end / $tile_size ) ) {
+            #    for my $x_tile ( ( $left_start / $tile_size ) .. ( $right_end / $tile_size ) ) {
+            #        push @sprites,
+            #          @{
+            #            $tile_cache->{"$y_tile:$x_tile"} ||=
+            #              $self->generate_background_tile( $y_tile, $x_tile, $tile_size, $STAR_SEED, $max_bg_depth,
+            #                $game_state, $c, $sprite_mult )
+            #          };
+            #    }
+            #}
 
             @sprites = sort { $b->[1][2] <=> $a->[1][2] } @sprites;
 
@@ -370,13 +370,13 @@ sub render_world {
                 }
             }
 
-            my $current_tick = $game_state->{tick};
-            my $age_offset   = 1 + $client_game_state->{max_trail} - $current_tick;
-            for my $trail ( values %{ $client_game_state->{trails} } ) {
-                my $segments = $trail->{segments};
-                $_->{sprite}[1][6] = $_->{brightness} * ( $age_offset + $_->{created} ) for @{$segments};
-                push @sprites, map $_->{sprite}, @{$segments}[ 0 .. $#{$segments} - 2 ];
-            }
+            #my $current_tick = $game_state->{tick};
+            #my $age_offset   = 1 + $client_game_state->{max_trail} - $current_tick;
+            #for my $trail ( values %{ $client_game_state->{trails} } ) {
+            #    my $segments = $trail->{segments};
+            #    $_->{sprite}[1][6] = $_->{brightness} * ( $age_offset + $_->{created} ) for @{$segments};
+            #    push @sprites, map $_->{sprite}, @{$segments}[ 0 .. $#{$segments} - 2 ];
+            #}
 
             for my $ex ( @{ $client_game_state->{explosions} } ) {
                 my @color = ( @{ $c->{ $ex->{team} } }[ 0 .. 2 ], 0.8 * $ex->{life} );
@@ -385,6 +385,7 @@ sub render_world {
             }
 
             push @{ $self->timestamps }, [ sprite_prepare_end => time ];
+            $DB::single = $DB::single = 1 if $self->frame > 100;
             $self->send_sprite_datas( @sprites );
             push @{ $self->timestamps }, [ sprite_send_end => time ];
         }

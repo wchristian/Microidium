@@ -9,6 +9,10 @@ use strictures;
 use lib '../lib';
 use lib 'lib';
 use local::lib 'local';
+BEGIN {
+    $DB::single = $DB::single = 1;
+    1;
+}
 use Microidium;
 
 Microidium->new->run;

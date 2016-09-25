@@ -7,6 +7,7 @@ use strictures;
 use List::Util qw( first min max );
 use Math::Vec ();
 use Data::GUID;
+use Hello::World 'distance';
 
 use Moo::Role;
 
@@ -167,7 +168,7 @@ sub prepare_collisions {
     my %collisions;
 
     while ( my $actor = pop @actors ) {
-        my @collisions = grep 32 > sqrt( ( $actor->{x} - $_->{x} )**2 + ( $actor->{y} - $_->{y} )**2 ), @actors;
+        my @collisions = grep 32 > distance( $actor->{x}, $_->{x}, $actor->{y}, $_->{y} ), @actors;
         next if !@collisions;
         for my $participant ( $actor, @collisions ) {
             my $id = $participant->{id};
@@ -309,7 +310,7 @@ sub apply_translation_forces {
         $new_player->{y_speed} = $old_player->{y_speed} + $y_speed_delta;
 
         my $max_speed = $old_player->{max_speed};
-        my $player_speed = $new_player->{speed} = sqrt( $new_player->{x_speed}**2 + $new_player->{y_speed}**2 );
+        my $player_speed = $new_player->{speed} = distance( $new_player->{x_speed}, 0, $new_player->{y_speed}, 0 );
         if ( $player_speed > $max_speed ) {
             my $mult = $max_speed / $player_speed;
             $new_player->{x_speed} *= $mult;
