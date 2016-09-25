@@ -44,7 +44,7 @@ L<SVatG|http://demogroup.vc/> for emotional support and graphics programming
 knowledge.
 
 L<Paul Evans|https://metacpan.org/author/PEVANS> and other maintainers
-L<Async::IO>, used for networking.
+L<IO::Async>, used for networking.
 
 L<Ingy döt Net|https://metacpan.org/author/INGY> and other maintainers for
 L<Inline::Module> and L<Inline::C>, used to provide slow Perl math as blazing

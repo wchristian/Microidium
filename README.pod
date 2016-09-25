@@ -49,9 +49,9 @@ L<SVatG|http://demogroup.vc/> for emotional support and graphics programming
 knowledge.
 
 L<Paul Evans|https://metacpan.org/author/PEVANS> and other maintainers
-L<Async::IO>, used for networking.
+L<IO::Async>, used for networking.
 
-L<Ingy döt Net|https://metacpan.org/author/INGY> and other maintainers for
+L<Ingy d�t Net|https://metacpan.org/author/INGY> and other maintainers for
 L<Inline::Module> and L<Inline::C>, used to provide slow Perl math as blazing
 fast XS.
 
@@ -86,6 +86,8 @@ OpenGL rendering internals.
 Sounds made with http://www.bfxr.net/
 
 Font texture made with http://www.codehead.co.uk/cbfg/
+
+To be inspected for inspiration: http://www.xpilot.org/development/
 
 =for :stopwords cpan testmatrix url annocpan anno bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
 

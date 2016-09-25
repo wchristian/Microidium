@@ -4,7 +4,7 @@
       "Christian Walde <walde.christian@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 5.036, CPAN::Meta::Converter version 2.143240",
+   "generated_by" : "Dist::Zilla version 6.007, CPAN::Meta::Converter version 2.150005",
    "license" : [
       "unrestricted"
    ],
@@ -15,10 +15,10 @@
    "name" : "Microidium",
    "no_index" : {
       "directory" : [
-         "t",
-         "xt",
+         "corpus",
          "examples",
-         "corpus"
+         "t",
+         "xt"
       ],
       "package" : [
          "DB"
@@ -34,12 +34,16 @@
       },
       "develop" : {
          "requires" : {
+            "English" : "0",
             "Pod::Coverage::TrustPod" : "0",
             "Test::CPAN::Meta" : "0",
             "Test::More" : "0",
             "Test::Pod" : "1.41",
             "Test::Pod::Coverage" : "1.08",
-            "Test::Version" : "1"
+            "Test::Portability::Files" : "0",
+            "Test::Version" : "1",
+            "strict" : "0",
+            "warnings" : "0"
          }
       },
       "runtime" : {
@@ -99,6 +103,7 @@
             "IPC::Open3" : "0",
             "Test::InDistDir" : "0",
             "Test::More" : "0",
+            "blib" : "1.01",
             "perl" : "5.010",
             "strict" : "0",
             "warnings" : "0"
@@ -200,6 +205,7 @@
          "web" : "https://github.com/wchristian/Microidium"
       }
    },
-   "version" : "0.000001"
+   "version" : "0.000001",
+   "x_serialization_backend" : "Cpanel::JSON::XS version 3.0213"
 }
 
