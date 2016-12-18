@@ -4,7 +4,7 @@
       "Christian Walde <walde.christian@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 6.007, CPAN::Meta::Converter version 2.150005",
+   "generated_by" : "Dist::Zilla version 6.008, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "unrestricted"
    ],
@@ -88,7 +88,6 @@
             "Time::HiRes" : "0",
             "constant" : "0",
             "curry" : "0",
-            "experimental" : "0",
             "lib" : "0",
             "local::lib" : "0",
             "perl" : "5.010",
@@ -206,6 +205,6 @@
       }
    },
    "version" : "0.000001",
-   "x_serialization_backend" : "Cpanel::JSON::XS version 3.0213"
+   "x_serialization_backend" : "Cpanel::JSON::XS version 3.0218"
 }
 

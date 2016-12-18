@@ -51,7 +51,7 @@ knowledge.
 L<Paul Evans|https://metacpan.org/author/PEVANS> and other maintainers
 L<IO::Async>, used for networking.
 
-L<Ingy d�t Net|https://metacpan.org/author/INGY> and other maintainers for
+L<Ingy döt Net|https://metacpan.org/author/INGY> and other maintainers for
 L<Inline::Module> and L<Inline::C>, used to provide slow Perl math as blazing
 fast XS.
 
