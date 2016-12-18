@@ -69,6 +69,8 @@
             "Moo" : "0",
             "Moo::Role" : "0",
             "OpenGL::Image" : "0",
+            "OpenGL::Modern" : "0",
+            "OpenGL::Modern::Helpers" : "0",
             "POSIX" : "0",
             "SDL" : "0",
             "SDL::Constants" : "0",

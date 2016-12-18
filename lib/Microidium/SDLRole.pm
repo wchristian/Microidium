@@ -18,13 +18,27 @@ use SDL::Mixer;
 use Time::HiRes 'time';
 use curry;
 use Clone 'clone';
-use Acme::MITHALDU::BleedingOpenGL ':functions';
+use OpenGL::Modern::Helpers qw( glGetShaderInfoLog_p glGetProgramInfoLog_p
+  glGetVersion_p glGenTextures_p  glGetProgramiv_p glGetShaderiv_p
+  glShaderSource_p glGenFramebuffers_p glGenVertexArrays_p glGenBuffers_p
+  glGetIntegerv_p glBufferData_p glUniform2f_p glUniform4f_p );
+use OpenGL::Modern qw(
+  glGetString glBindFramebufferEXT glClearColor glClear glBindTexture glTexParameterf glFramebufferTexture2DEXT
+  glCheckFramebufferStatusEXT glBindBufferARB glBindVertexArray glEnable glBlendFunc glDrawArrays glDisable glActiveTextureARB glUseProgramObjectARB glUniform1fARB
+  glUniform2fARB glTexParameteri glUniform1iARB glEnableVertexAttribArrayARB glAttachShader glDetachObjectARB glCreateShaderObjectARB glCompileShaderARB glLinkProgramARB glDeleteShader
+  glewCreateContext glewInit
+  glCreateProgramObjectARB glViewport
+  glGetAttribLocation_c glGetUniformLocation_c glVertexAttribPointerARB_c glTexImage2D_c glTexSubImage3D_c
+  glTexImage3D_c
+  glewGetErrorString
+);
 use IO::All -binary;
 use OpenGL::Image;
 use Carp 'confess';
 use List::Util 'min';
 use Color::Mix;
 use Microidium::Helpers 'dfile';
+use constant ();
 
 use Moo::Role;
 
@@ -37,17 +51,13 @@ BEGIN {
       GL_COMPILE_STATUS GL_LINK_STATUS GL_GEOMETRY_SHADER GL_POINTS
       GL_TEXTURE_WRAP_S  GL_TEXTURE_WRAP_T GL_RGBA GL_DEPTH_COMPONENT
       GL_FRAMEBUFFER GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER_COMPLETE
-      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW GL_VERSION
+      GL_COLOR_ATTACHMENT0_EXT GL_DEPTH_ATTACHMENT GL_STREAM_DRAW
       GL_RENDERER GL_MAX_TEXTURE_SIZE GL_MAX_ARRAY_TEXTURE_LAYERS
       GL_TEXTURE_2D_ARRAY
     );
 
-    for my $name ( keys %gl_constants ) {
-        my $val = eval "Acme::MITHALDU::BleedingOpenGL::$name()";
-        die $@ if $@;
-        eval "sub $name () { $val }";
-        die $@ if $@;
-    }
+    # ensure we got all the constants, and convert from XS to pure perl
+    constant->import( $_ => eval "OpenGL::Modern::$_()" ) for keys %gl_constants;
 }
 
 has app => ( is => 'lazy', handles => [qw( run stop sync )] );
@@ -102,6 +112,10 @@ sub _build_timings {
 sub _build_app {
     my ( $self ) = @_;
 
+    die "glewCreateContext failed\n" if glewCreateContext();
+    my $glew_error = glewInit();
+    die "glewInit error: " . glewGetErrorString( $glew_error ) . "\n" if $glew_error;
+
     # i'd use mp3, but throwing mp3 at the music mixer seems to crash it
     die "no ogg support" if !( SDL::Mixer::init( MIX_INIT_OGG ) & MIX_INIT_OGG );
 
@@ -121,9 +135,7 @@ sub _build_app {
     );
 
     say glGetString GL_RENDERER;
-    my $version = glGetString GL_VERSION;
-    $version =~ s/ .*//;
-    $version = version->parse( $version );
+    my $version = glGetVersion_p;
     die "Your OpenGL version is $version. You must have at least OpenGL 3.3 to run this tutorial.\n"
       if $version < 3.003;
 
@@ -326,7 +338,7 @@ sub smooth_update {
 sub glGetAttribLocationARB_p_safe {
     my ( $self, $shader_name, $attrib_name ) = @_;
     my $shader = $self->shaders->{$shader_name};
-    my $ret = glGetAttribLocationARB_p $shader, $attrib_name;
+    my $ret = glGetAttribLocation_c $shader, $attrib_name;
     die "Could not find attribute '$attrib_name' in '$shader_name'" if $ret == -1;
     return $ret;
 }
@@ -334,7 +346,7 @@ sub glGetAttribLocationARB_p_safe {
 sub glGetUniformLocationARB_p_safe {
     my ( $self, $shader_name, $attrib_name ) = @_;
     my $shader = $self->shaders->{$shader_name};
-    my $ret = glGetUniformLocationARB_p $shader, $attrib_name;
+    my $ret = glGetUniformLocation_c $shader, $attrib_name;
     die "Could not find uniform '$attrib_name' in '$shader_name'" if $ret == -1;
     return $ret;
 }
@@ -352,7 +364,7 @@ sub init_fbo {
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP;
-    glTexImage2D_c GL_TEXTURE_2D,  0, GL_RGBA, @dim, 0, GL_RGBA, GL_FLOAT, 0;
+    glTexImage2D_c GL_TEXTURE_2D,  0, GL_RGBA, $dim[0], $dim[1], 0, GL_RGBA, GL_FLOAT, 0;
 
     # depth texture
     my $depth = $textures->{"fbo_depth_$name"} = glGenTextures_p 1;
@@ -361,10 +373,10 @@ sub init_fbo {
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP;
     glTexParameterf GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP;
-    glTexImage2D_c GL_TEXTURE_2D,  0, GL_DEPTH_COMPONENT, @dim, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0;
+    glTexImage2D_c GL_TEXTURE_2D,  0, GL_DEPTH_COMPONENT, $dim[0], $dim[1], 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0;
 
     # fbo
-    $self->fbos->{$name} = glGenFramebuffersEXT_p 1;
+    $self->fbos->{$name} = glGenFramebuffers_p 1;
     glBindFramebufferEXT GL_FRAMEBUFFER, $self->fbos->{$name};
 
     # attach textures to fbo
@@ -613,7 +625,7 @@ sub render_timings {
     glBlendFunc GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA;
 
     my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $self->timings->{list} } );
-    glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
+    glBufferData_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
 
     glDrawArrays GL_POINTS, 0, $self->timings_max_frames;
 
@@ -665,7 +677,7 @@ sub with_sprite_setup_render {
     glBindVertexArray $self->vaos->{sprite};
 
     my $uniforms = $self->uniforms->{sprites};
-    glUniform2fARB $uniforms->{camera}, @{ $self->client_game_state->{camera}{pos} }{qw( x y )};
+    glUniform2f_p $uniforms->{camera}, @{ $self->client_game_state->{camera}{pos} }{qw( x y )};
 
     glActiveTextureARB GL_TEXTURE0;
 
@@ -679,7 +691,7 @@ sub with_sprite_setup_render {
         glBindTexture GL_TEXTURE_2D_ARRAY, $self->textures->{$tex};
         glUniform1iARB $uniforms->{texture}, 0;
         my $sprite_data = OpenGL::Array->new_list( GL_FLOAT, @{ $sprites->{$tex} } );
-        glBufferDataARB_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
+        glBufferData_p GL_ARRAY_BUFFER, $sprite_data, GL_STREAM_DRAW;
 
         my $count = @{ $sprites->{$tex} } / 10;
         glDrawArrays GL_POINTS, 0, $count;
@@ -774,8 +786,8 @@ sub print_text_2D {
         $text_verts->{$key} = $vert_ogl if !$text->[2];
 
         glUniform2fARB $uniforms->{size}, 2 * $size_x, 2 * $size;
-        glUniform4fARB $uniforms->{color}, @{$color};
-        glBufferDataARB_p GL_ARRAY_BUFFER, $vert_ogl, GL_STREAM_DRAW;
+        glUniform4f_p $uniforms->{color}, @{$color};
+        glBufferData_p GL_ARRAY_BUFFER, $vert_ogl, GL_STREAM_DRAW;
 
         glDrawArrays GL_POINTS, 0, length $text->[1];
     }
@@ -872,7 +884,7 @@ sub LoadShader {
 
     my $shader = glCreateShaderObjectARB $eShaderType;
 
-    glShaderSourceARB_p $shader, $strShaderFile;
+    glShaderSource_p $shader, $strShaderFile;
     glCompileShaderARB $shader;
 
     my $status = glGetShaderiv_p $shader, GL_COMPILE_STATUS;
@@ -895,7 +907,7 @@ sub CreateProgram {
 
     my $status = glGetProgramiv_p $program, GL_LINK_STATUS;
     if ( $status == GL_FALSE ) {
-        my $stat = glGetInfoLogARB_p $program;
+        my $stat = glGetProgramInfoLog_p $program;
         confess "Shader link log: $stat" if $stat;
     }
 
@@ -906,7 +918,7 @@ sub CreateProgram {
     return $program;
 }
 
-sub new_vbo { shift->vbos->{ shift() } = glGenBuffersARB_p 1 }
+sub new_vbo { shift->vbos->{ shift() } = glGenBuffers_p 1 }
 sub new_vao { shift->vaos->{ shift() } = glGenVertexArrays_p 1 }
 
 sub load_vertex_buffer {
@@ -915,7 +927,7 @@ sub load_vertex_buffer {
     my $vbo = $self->new_vbo( $name );
     glBindBufferARB GL_ARRAY_BUFFER, $vbo;
     my $v = OpenGL::Array->new_list( GL_FLOAT, @data );
-    glBufferDataARB_p GL_ARRAY_BUFFER, $v, GL_STREAM_DRAW;
+    glBufferData_p GL_ARRAY_BUFFER, $v, GL_STREAM_DRAW;
     glBindBufferARB GL_ARRAY_BUFFER, 0;
 
     return;
