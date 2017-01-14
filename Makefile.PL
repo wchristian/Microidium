@@ -71,7 +71,7 @@ my %WriteMakefileArgs = (
     "curry" => 0,
     "lib" => 0,
     "local::lib" => 0,
-    "strictures" => 0
+    "strictures" => 2
   },
   "TEST_REQUIRES" => {
     "File::Spec" => 0,
@@ -80,8 +80,10 @@ my %WriteMakefileArgs = (
     "IPC::Open3" => 0,
     "Test::InDistDir" => 0,
     "Test::More" => 0,
+    "Test::ReportPerlTidy" => 0,
     "blib" => "1.01",
     "strict" => 0,
+    "strictures" => 2,
     "warnings" => 0
   },
   "VERSION" => "0.000001",
@@ -135,6 +137,7 @@ my %FallbackPrereqs = (
   "Sub::Name" => 0,
   "Test::InDistDir" => 0,
   "Test::More" => 0,
+  "Test::ReportPerlTidy" => 0,
   "Time::HiRes" => 0,
   "blib" => "1.01",
   "constant" => 0,
@@ -142,7 +145,7 @@ my %FallbackPrereqs = (
   "lib" => 0,
   "local::lib" => 0,
   "strict" => 0,
-  "strictures" => 0,
+  "strictures" => 2,
   "warnings" => 0
 );
 

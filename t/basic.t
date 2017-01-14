@@ -5,7 +5,7 @@ package basic_test;
 use Test::InDistDir;
 use Test::More;
 
-use Microidium::Client;
+use Microidium;
 
 run();
 done_testing;

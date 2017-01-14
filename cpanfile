@@ -41,7 +41,7 @@ requires "curry" => "0";
 requires "lib" => "0";
 requires "local::lib" => "0";
 requires "perl" => "5.010";
-requires "strictures" => "0";
+requires "strictures" => "2";
 
 on 'test' => sub {
   requires "File::Spec" => "0";
@@ -50,9 +50,11 @@ on 'test' => sub {
   requires "IPC::Open3" => "0";
   requires "Test::InDistDir" => "0";
   requires "Test::More" => "0";
+  requires "Test::ReportPerlTidy" => "0";
   requires "blib" => "1.01";
   requires "perl" => "5.010";
   requires "strict" => "0";
+  requires "strictures" => "2";
   requires "warnings" => "0";
 };
 

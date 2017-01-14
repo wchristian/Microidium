@@ -49,10 +49,10 @@ sub on_recv_udp {
     my ( $port, $ip_address ) = unpack_sockaddr_in $addr;
     my $ip_string    = inet_ntoa $ip_address;
     my $from_address = "$ip_string:$port";
-    my $frame = $self->extract_frame( \$dgram );
+    my $frame        = $self->extract_frame( \$dgram );
     if ( $frame->isa( "PryoNet::FrameWorkMessage::RegisterUDP" ) ) {
         my $from_connection_id = $frame->connection_id;
-        my $connection = delete $self->pending_connections->{$from_connection_id};
+        my $connection         = delete $self->pending_connections->{$from_connection_id};
         return if !$connection or $connection->udp_remote_address;
 
         $connection->udp_remote_address_octets( $addr );

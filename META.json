@@ -91,7 +91,7 @@
             "lib" : "0",
             "local::lib" : "0",
             "perl" : "5.010",
-            "strictures" : "0"
+            "strictures" : "2"
          }
       },
       "test" : {
@@ -102,9 +102,11 @@
             "IPC::Open3" : "0",
             "Test::InDistDir" : "0",
             "Test::More" : "0",
+            "Test::ReportPerlTidy" : "0",
             "blib" : "1.01",
             "perl" : "5.010",
             "strict" : "0",
+            "strictures" : "2",
             "warnings" : "0"
          }
       }
