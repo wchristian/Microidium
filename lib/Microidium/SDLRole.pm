@@ -33,7 +33,7 @@ use OpenGL::Modern qw(
   glewGetErrorString
 );
 use IO::All -binary;
-use OpenGL::Image;
+use OpenGL::Modern::Image;
 use Carp 'confess';
 use List::Util 'min';
 use Color::Mix;
@@ -802,7 +802,7 @@ sub print_text_2D {
 sub load_image {
     my ( $self, $path ) = @_;
 
-    my $img = OpenGL::Image->new( engine => 'Targa', source => $path );
+    my $img = OpenGL::Modern::Image->new( engine => 'Targa', source => $path );
     my ( $ifmt, $fmt, $type ) = $img->Get( 'gl_internalformat', 'gl_format', 'gl_type' );
     my ( $w, $h ) = $img->Get( 'width', 'height' );
 
